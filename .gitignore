@@ -3,8 +3,10 @@
 *.tfstate
 *.tfstate.*
 *.tfplan
+*.tfvars
+!*.tfvars.example
+backend.hcl
 crash.log
-.terraform.lock.hcl
 
 # Environment and secrets
 .env

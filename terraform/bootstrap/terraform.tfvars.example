@@ -1,0 +1,17 @@
+aws_region        = "us-east-1"
+project_name      = "aws-production-devops-platform"
+state_bucket_name = "dayana-aws-production-devops-platform-tfstate-ACCOUNT_ID"
+
+github_owner      = "dayanarojasdrp"
+github_repository = "aws-production-devops-platform"
+github_branch     = "main"
+
+# Repositories created after July 15, 2026 use immutable OIDC subjects.
+# Obtain these numeric IDs from the GitHub API and set both values together.
+github_owner_id      = "168503064"
+github_repository_id = "1388204996"
+
+tags = {
+  Environment = "shared"
+  Owner       = "dayanarojasdrp"
+}

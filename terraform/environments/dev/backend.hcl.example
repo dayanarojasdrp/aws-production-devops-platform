@@ -1,0 +1,2 @@
+bucket = "dayana-aws-production-devops-platform-tfstate-ACCOUNT_ID"
+region = "us-east-1"
