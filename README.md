@@ -2,6 +2,8 @@
 
 Production-oriented AWS platform scaffold using Go, Terraform, containers, and automated delivery workflows.
 
+The current phase focuses on proving the application locally with Go, PostgreSQL, and Docker Compose. AWS infrastructure remains scaffolded for a later phase.
+
 ## Repository layout
 
 - `app/`: Go application and container definition.
@@ -12,4 +14,10 @@ Production-oriented AWS platform scaffold using Go, Terraform, containers, and a
 
 ## Getting started
 
-Copy the relevant `terraform.tfvars.example`, configure the remote backend, and run `make validate` before planning infrastructure changes.
+```sh
+cp .env.example .env
+make up
+make smoke-test
+```
+
+Use `make logs` to follow the containers and `make down` to stop them. See [`app/README.md`](app/README.md) for endpoint details and [`docs/local-development.md`](docs/local-development.md) for the architecture and file-by-file explanation.
