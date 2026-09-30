@@ -1,4 +1,13 @@
-.PHONY: fmt validate smoke-test load-test
+.PHONY: up down logs fmt validate smoke-test load-test
+
+up:
+	docker compose up --build -d
+
+down:
+	docker compose down
+
+logs:
+	docker compose logs -f
 
 fmt:
 	terraform fmt -recursive terraform
