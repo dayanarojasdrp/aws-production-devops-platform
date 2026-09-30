@@ -21,3 +21,7 @@ make smoke-test
 ```
 
 Use `make logs` to follow the containers and `make down` to stop them. See [`app/README.md`](app/README.md) for endpoint details and [`docs/local-development.md`](docs/local-development.md) for the architecture and file-by-file explanation.
+
+## AWS bootstrap
+
+The first AWS phase creates the protected Terraform state bucket and GitHub Actions OIDC role; it does not deploy application infrastructure. Follow [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md) before initializing the development or production Terraform environments.
