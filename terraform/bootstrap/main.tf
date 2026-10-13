@@ -10,6 +10,8 @@ provider "aws" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
   github_subject = var.github_owner_id != null && var.github_repository_id != null ? format(
     "repo:%s@%s/%s@%s:ref:refs/heads/%s",

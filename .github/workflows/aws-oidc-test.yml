@@ -1,0 +1,83 @@
+name: AWS OIDC authentication test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-oidc-authentication-test
+  cancel-in-progress: false
+
+jobs:
+  verify-aws-identity:
+    name: Verify temporary AWS identity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate repository variables
+        shell: bash
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for variable in AWS_ACCOUNT_ID AWS_REGION AWS_ROLE_ARN; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "::error::Repository variable ${variable} is not configured."
+              missing=1
+            fi
+          done
+          exit "${missing}"
+
+      - name: Configure temporary AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: github-oidc-${{ github.run_id }}
+          role-duration-seconds: 900
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          unset-current-credentials: true
+
+      - name: Verify caller identity
+        shell: bash
+        env:
+          EXPECTED_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          EXPECTED_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+
+          identity="$(aws sts get-caller-identity --output json)"
+          account_id="$(jq -r '.Account' <<<"${identity}")"
+          caller_arn="$(jq -r '.Arn' <<<"${identity}")"
+          role_name="${EXPECTED_ROLE_ARN##*/}"
+
+          if [[ "${account_id}" != "${EXPECTED_ACCOUNT_ID}" ]]; then
+            echo "::error::Expected AWS account ${EXPECTED_ACCOUNT_ID}, received ${account_id}."
+            exit 1
+          fi
+
+          case "${caller_arn}" in
+            arn:aws:sts::"${EXPECTED_ACCOUNT_ID}":assumed-role/"${role_name}"/*) ;;
+            *)
+              echo "::error::STS returned an unexpected caller ARN: ${caller_arn}"
+              exit 1
+              ;;
+          esac
+
+          echo "${identity}"
+          {
+            echo "## AWS OIDC authentication succeeded"
+            echo
+            echo "- Account: \`${account_id}\`"
+            echo "- Caller: \`${caller_arn}\`"
+            echo "- Region: \`${AWS_REGION}\`"
+            echo "- Credential source: GitHub OIDC → AWS STS"
+          } >>"${GITHUB_STEP_SUMMARY}"
