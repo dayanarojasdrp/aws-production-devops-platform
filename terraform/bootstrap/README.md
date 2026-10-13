@@ -78,6 +78,8 @@ terraform output
 
 The equivalent repository shortcuts are `make bootstrap-init`, `make bootstrap-validate`, and `make bootstrap-plan`.
 
+After a successful apply, continue with [`docs/oidc.md`](../../docs/oidc.md) to configure the three non-secret GitHub repository variables and run the OIDC authentication proof.
+
 Do not commit `terraform.tfvars`, `bootstrap.tfplan`, or `terraform.tfstate`.
 
 ## Configure the environment backends
