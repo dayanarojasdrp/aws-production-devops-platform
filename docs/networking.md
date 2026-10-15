@@ -20,7 +20,7 @@ Private application subnets (future ECS tasks)
 Isolated database subnets (future RDS PostgreSQL)
 ```
 
-The intended rule is: Internet clients can reach the ALB; the ALB can reach ECS; ECS can reach RDS. Internet clients cannot directly reach ECS or RDS. Security groups enforcing those workload-to-workload rules are intentionally deferred to the security phase; this phase establishes the routing boundaries underneath them.
+The intended rule is: Internet clients can reach the ALB; the ALB can reach ECS; ECS can reach RDS. Internet clients cannot directly reach ECS or RDS. The routing boundaries are implemented here, while the security groups enforcing the workload-to-workload chain are implemented in [`security.md`](security.md).
 
 ## VPC and Availability Zones
 
