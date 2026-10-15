@@ -12,3 +12,4 @@ All notable changes to this project will be documented in this file.
 - Environment example and executable smoke-test workflow.
 - Terraform bootstrap for secure S3 remote state and GitHub Actions OIDC authentication.
 - Manual GitHub Actions workflow that verifies AWS OIDC and STS role assumption without permanent access keys.
+- Reusable two-AZ networking module with public, private application, and isolated database subnet tiers.

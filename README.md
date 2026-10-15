@@ -27,3 +27,5 @@ Use `make logs` to follow the containers and `make down` to stop them. See [`app
 The first AWS phase creates the protected Terraform state bucket and GitHub Actions OIDC role; it does not deploy application infrastructure. Follow [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md) before initializing the development or production Terraform environments.
 
 After applying the bootstrap, follow [`docs/oidc.md`](docs/oidc.md) to configure and run the GitHub Actions proof of temporary AWS authentication.
+
+The first application-infrastructure module builds the three-tier VPC. See [`docs/networking.md`](docs/networking.md) for subnet placement, routing, NAT availability/cost trade-offs, and module outputs.
