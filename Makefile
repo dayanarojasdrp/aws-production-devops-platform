@@ -1,4 +1,4 @@
-.PHONY: up down logs fmt validate smoke-test load-test bootstrap-init bootstrap-validate bootstrap-plan network-test
+.PHONY: up down logs fmt validate smoke-test load-test bootstrap-init bootstrap-validate bootstrap-plan network-test security-test
 
 up:
 	docker compose up --build -d
@@ -34,3 +34,7 @@ bootstrap-plan:
 network-test:
 	terraform -chdir=terraform/modules/networking init -backend=false
 	terraform -chdir=terraform/modules/networking test
+
+security-test:
+	terraform -chdir=terraform/modules/security init -backend=false
+	terraform -chdir=terraform/modules/security test
