@@ -14,3 +14,4 @@ All notable changes to this project will be documented in this file.
 - Manual GitHub Actions workflow that verifies AWS OIDC and STS role assumption without permanent access keys.
 - Reusable two-AZ networking module with public, private application, and isolated database subnet tiers.
 - Unit-tested API configuration and HTTP boundaries, including explicit PostgreSQL SSL policy and structured response logging.
+- Terraform-specific GitHub OIDC role naming in preparation for separate deployment and ECS runtime identities.

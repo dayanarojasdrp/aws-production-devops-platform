@@ -61,7 +61,7 @@ The workflow cannot succeed until `terraform/bootstrap` has created the OIDC pro
 ```sh
 terraform -chdir=terraform/bootstrap output -raw aws_account_id
 terraform -chdir=terraform/bootstrap output -raw aws_region
-terraform -chdir=terraform/bootstrap output -raw github_actions_role_arn
+terraform -chdir=terraform/bootstrap output -raw github_terraform_role_arn
 ```
 
 ## Configure GitHub repository variables
@@ -81,7 +81,7 @@ Create these non-secret repository variables:
 | --- | --- | --- |
 | `AWS_ACCOUNT_ID` | `terraform output aws_account_id` | `123456789012` |
 | `AWS_REGION` | `terraform output aws_region` | `us-east-1` |
-| `AWS_ROLE_ARN` | `terraform output github_actions_role_arn` | `arn:aws:iam::123456789012:role/aws-production-devops-platform-github-actions` |
+| `AWS_TERRAFORM_ROLE_ARN` | `terraform output github_terraform_role_arn` | `arn:aws:iam::123456789012:role/aws-production-devops-platform-github-terraform` |
 
 An IAM role ARN and AWS account ID are identifiers, not passwords. They can be repository variables. Do not create repository secrets containing permanent AWS access keys.
 
@@ -99,7 +99,7 @@ Choose `main`. A successful execution prints an identity similar to:
 {
   "UserId": "ROLE_ID:github-oidc-RUN_ID",
   "Account": "123456789012",
-  "Arn": "arn:aws:sts::123456789012:assumed-role/aws-production-devops-platform-github-actions/github-oidc-RUN_ID"
+  "Arn": "arn:aws:sts::123456789012:assumed-role/aws-production-devops-platform-github-terraform/github-oidc-RUN_ID"
 }
 ```
 

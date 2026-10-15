@@ -4,7 +4,7 @@ This root module creates only the foundations required before the main AWS platf
 
 1. a protected S3 bucket for remote Terraform state;
 2. the GitHub Actions OIDC identity provider in AWS IAM;
-3. a branch- and repository-restricted IAM role for GitHub Actions;
+3. a branch- and repository-restricted IAM role for GitHub Terraform workflows;
 4. least-privilege access from that role to the `dev` and `prod` state objects and lock files.
 
 It deliberately does not create the VPC, ECS, ALB, RDS, ECR, application, or observability resources.
@@ -35,7 +35,7 @@ After this module creates the bucket, the environment root modules use S3 remote
 - The role receives temporary credentials for at most one hour.
 - Its current permission policy can access only the two state paths and delete only `.tflock` objects, never state objects.
 
-The role intentionally has no ECS, ECR, VPC, RDS, or administrator permissions yet. Those permissions must be added when the corresponding infrastructure and CI/CD responsibilities exist, using concrete resource ARNs wherever AWS supports them.
+This is deliberately the **GitHub Terraform role**, not a general-purpose CI/CD role. It has no ECS deployment, ECR push, application runtime, or administrator permissions. A separate GitHub deployment role will be introduced when application delivery exists, while ECS execution and task roles will remain independent runtime identities.
 
 ## Prerequisites
 

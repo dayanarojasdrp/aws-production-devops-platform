@@ -23,12 +23,12 @@ jobs:
         env:
           AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
           AWS_REGION: ${{ vars.AWS_REGION }}
-          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+          AWS_TERRAFORM_ROLE_ARN: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
         run: |
           set -euo pipefail
 
           missing=0
-          for variable in AWS_ACCOUNT_ID AWS_REGION AWS_ROLE_ARN; do
+          for variable in AWS_ACCOUNT_ID AWS_REGION AWS_TERRAFORM_ROLE_ARN; do
             if [[ -z "${!variable:-}" ]]; then
               echo "::error::Repository variable ${variable} is not configured."
               missing=1
@@ -39,7 +39,7 @@ jobs:
       - name: Configure temporary AWS credentials through OIDC
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: github-oidc-${{ github.run_id }}
           role-duration-seconds: 900
@@ -50,7 +50,7 @@ jobs:
         shell: bash
         env:
           EXPECTED_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-          EXPECTED_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+          EXPECTED_ROLE_ARN: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
         run: |
           set -euo pipefail
 

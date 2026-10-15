@@ -13,9 +13,9 @@ output "state_bucket_arn" {
   value       = aws_s3_bucket.terraform_state.arn
 }
 
-output "github_actions_role_arn" {
-  description = "IAM role ARN that GitHub Actions assumes through OIDC."
-  value       = aws_iam_role.github_actions.arn
+output "github_terraform_role_arn" {
+  description = "IAM role ARN that GitHub Terraform workflows assume through OIDC."
+  value       = aws_iam_role.github_terraform.arn
 }
 
 output "github_oidc_provider_arn" {

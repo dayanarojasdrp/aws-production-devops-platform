@@ -74,7 +74,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" 
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }
-    bucket_key_enabled = true
   }
 }
 
@@ -151,14 +150,14 @@ data "aws_iam_policy_document" "github_assume_role" {
   }
 }
 
-resource "aws_iam_role" "github_actions" {
-  name                 = "${var.project_name}-github-actions"
-  description          = "Short-lived AWS access for this repository's GitHub Actions workflow."
+resource "aws_iam_role" "github_terraform" {
+  name                 = "${var.project_name}-github-terraform"
+  description          = "Short-lived AWS access for this repository's Terraform workflows."
   assume_role_policy   = data.aws_iam_policy_document.github_assume_role.json
   max_session_duration = 3600
 }
 
-data "aws_iam_policy_document" "github_state_access" {
+data "aws_iam_policy_document" "github_terraform_state_access" {
   statement {
     sid       = "ListStatePrefixes"
     effect    = "Allow"
@@ -190,8 +189,8 @@ data "aws_iam_policy_document" "github_state_access" {
   }
 }
 
-resource "aws_iam_role_policy" "github_state_access" {
+resource "aws_iam_role_policy" "github_terraform_state_access" {
   name   = "terraform-state-access"
-  role   = aws_iam_role.github_actions.id
-  policy = data.aws_iam_policy_document.github_state_access.json
+  role   = aws_iam_role.github_terraform.id
+  policy = data.aws_iam_policy_document.github_terraform_state_access.json
 }

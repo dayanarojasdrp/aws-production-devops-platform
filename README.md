@@ -24,7 +24,7 @@ Use `make logs` to follow the containers and `make down` to stop them. See [`app
 
 ## AWS bootstrap
 
-The first AWS phase creates the protected Terraform state bucket and GitHub Actions OIDC role; it does not deploy application infrastructure. Follow [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md) before initializing the development or production Terraform environments.
+The first AWS phase creates the protected Terraform state bucket and a Terraform-specific GitHub Actions OIDC role; it does not deploy application infrastructure. This identity is intentionally separate from the future application-deployment and ECS runtime roles. Follow [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md) before initializing the development or production Terraform environments.
 
 After applying the bootstrap, follow [`docs/oidc.md`](docs/oidc.md) to configure and run the GitHub Actions proof of temporary AWS authentication.
 
