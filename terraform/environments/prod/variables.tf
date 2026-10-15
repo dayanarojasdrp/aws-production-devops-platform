@@ -57,6 +57,24 @@ variable "single_nat_gateway" {
   default     = false
 }
 
+variable "alb_ingress_ipv4_cidrs" {
+  description = "IPv4 CIDR blocks allowed to reach the production ALB on HTTP and HTTPS."
+  type        = set(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "application_port" {
+  description = "Port used from the production ALB to ECS tasks."
+  type        = number
+  default     = 8080
+}
+
+variable "postgres_port" {
+  description = "Port used from production ECS tasks to PostgreSQL."
+  type        = number
+  default     = 5432
+}
+
 variable "tags" {
   description = "Additional tags applied to production resources."
   type        = map(string)

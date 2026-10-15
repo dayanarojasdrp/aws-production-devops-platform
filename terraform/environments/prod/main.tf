@@ -19,3 +19,14 @@ module "networking" {
   single_nat_gateway       = var.single_nat_gateway
   tags                     = local.common_tags
 }
+
+module "security" {
+  source = "../../modules/security"
+
+  name_prefix            = local.name_prefix
+  vpc_id                 = module.networking.vpc_id
+  alb_ingress_ipv4_cidrs = var.alb_ingress_ipv4_cidrs
+  application_port       = var.application_port
+  postgres_port          = var.postgres_port
+  tags                   = local.common_tags
+}

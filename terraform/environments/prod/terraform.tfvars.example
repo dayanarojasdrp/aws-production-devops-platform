@@ -9,3 +9,7 @@ private_db_subnet_cidrs  = ["10.1.21.0/24", "10.1.22.0/24"]
 
 # One NAT per AZ avoids a single-AZ outbound dependency in production.
 single_nat_gateway = false
+
+alb_ingress_ipv4_cidrs = ["0.0.0.0/0"]
+application_port       = 8080
+postgres_port          = 5432
