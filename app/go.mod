@@ -1,4 +1,4 @@
-module github.com/your-org/aws-production-devops-platform/app
+module github.com/dayanarojasdrp/aws-production-devops-platform/app
 
 go 1.24
 

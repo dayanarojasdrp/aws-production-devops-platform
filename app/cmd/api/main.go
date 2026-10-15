@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/your-org/aws-production-devops-platform/app/internal/config"
-	"github.com/your-org/aws-production-devops-platform/app/internal/database"
-	"github.com/your-org/aws-production-devops-platform/app/internal/handlers"
+	"github.com/dayanarojasdrp/aws-production-devops-platform/app/internal/config"
+	"github.com/dayanarojasdrp/aws-production-devops-platform/app/internal/database"
+	"github.com/dayanarojasdrp/aws-production-devops-platform/app/internal/handlers"
 )
 
 func main() {

@@ -1,23 +1,32 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/mail"
 	"strings"
 	"time"
 
-	"github.com/your-org/aws-production-devops-platform/app/internal/database"
+	"github.com/dayanarojasdrp/aws-production-devops-platform/app/internal/database"
+	"github.com/dayanarojasdrp/aws-production-devops-platform/app/internal/models"
 )
 
+type Store interface {
+	Ready(context.Context) error
+	ListUsers(context.Context) ([]models.User, error)
+	CreateUser(context.Context, string, string) (models.User, error)
+}
+
 type Handler struct {
-	db     *database.Database
+	db     Store
 	logger *slog.Logger
 }
 
-func New(db *database.Database, logger *slog.Logger) *Handler {
+func New(db Store, logger *slog.Logger) *Handler {
 	return &Handler{db: db, logger: logger}
 }
 
@@ -71,10 +80,14 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
 		return
 	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "request body must contain one JSON object"})
+		return
+	}
 
 	input.Name = strings.TrimSpace(input.Name)
 	input.Email = strings.TrimSpace(strings.ToLower(input.Email))
-	if input.Name == "" || !validEmail(input.Email) {
+	if input.Name == "" || len(input.Name) > 100 || len(input.Email) > 254 || !validEmail(input.Email) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name and a valid email are required"})
 		return
 	}

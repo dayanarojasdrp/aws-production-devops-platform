@@ -10,6 +10,7 @@ services:
       DB_NAME: ${DB_NAME:-platform}
       DB_USER: ${DB_USER:-platform}
       DB_PASSWORD: ${DB_PASSWORD:-local_dev_password}
+      DB_SSLMODE: disable
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:

@@ -29,7 +29,7 @@ This is the executable entry point. It loads configuration, creates the database
 
 ### `app/internal/config/config.go`
 
-This package reads runtime configuration from environment variables. It rejects missing database values and creates a PostgreSQL URL safely. Keeping configuration outside the source code avoids committed passwords and lets the same binary receive different values later from ECS, RDS, and Secrets Manager.
+This package reads runtime configuration from environment variables. It rejects missing database values, invalid ports, and unsupported PostgreSQL SSL modes, then creates the connection URL safely. `DB_SSLMODE` defaults to `require` so a future remote RDS connection is not silently downgraded; Compose explicitly sets `disable` only for the local PostgreSQL container. Keeping configuration outside the source code avoids committed passwords and lets the same binary receive different values later from ECS, RDS, and Secrets Manager.
 
 ### `app/internal/database/postgres.go`
 
@@ -50,11 +50,11 @@ This is the shared representation of a user. JSON tags define the public respons
 
 ### `app/internal/handlers/handlers.go`
 
-This is the HTTP boundary. It registers the four routes, validates request JSON, chooses HTTP status codes, calls the database package, and serializes responses. Database errors are logged internally without leaking implementation details or credentials to clients.
+This is the HTTP boundary. It registers the four routes, validates exactly one bounded JSON object, chooses HTTP status codes, calls the storage contract, and serializes responses. Its small `Store` interface allows handler behavior to be tested without starting PostgreSQL, while the real database implementation satisfies the same contract. Database errors are logged internally without leaking implementation details or credentials to clients.
 
 ### `app/internal/handlers/middleware.go`
 
-This contains behavior shared by several endpoints: request logging and bounded request contexts. Timeouts prevent a database failure from leaving HTTP requests waiting forever.
+This contains behavior shared by several endpoints: structured request logging and bounded request contexts. Each completed request records its method, path, status, response size, and duration, which will later become useful CloudWatch fields. Timeouts prevent a database failure from leaving HTTP requests waiting forever.
 
 ### `app/Dockerfile`
 

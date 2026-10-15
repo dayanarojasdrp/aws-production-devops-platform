@@ -5,10 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dayanarojasdrp/aws-production-devops-platform/app/internal/models"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/your-org/aws-production-devops-platform/app/internal/models"
 )
 
 var ErrEmailExists = errors.New("email already exists")

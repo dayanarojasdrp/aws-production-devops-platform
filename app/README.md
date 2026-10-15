@@ -23,6 +23,7 @@ The API creates the `users` table automatically with `CREATE TABLE IF NOT EXISTS
 | `DB_NAME` | Yes | — | Database name. |
 | `DB_USER` | Yes | — | Database user. |
 | `DB_PASSWORD` | Yes | — | Database password. |
+| `DB_SSLMODE` | No | `require` | PostgreSQL transport security. Compose explicitly uses `disable` only for the local database. |
 
 ## Run locally
 
