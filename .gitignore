@@ -7,6 +7,7 @@
 !*.tfvars.example
 backend.hcl
 crash.log
+terraform/modules/**/.terraform.lock.hcl
 
 # Environment and secrets
 .env
