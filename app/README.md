@@ -11,7 +11,7 @@ Small Go HTTP API used to prove connectivity between an application and PostgreS
 | `GET` | `/users` | Returns all users stored in PostgreSQL. |
 | `POST` | `/users` | Creates a user from a JSON body containing `name` and `email`. |
 
-The API creates the `users` table automatically with `CREATE TABLE IF NOT EXISTS` when PostgreSQL becomes available.
+The API verifies PostgreSQL connectivity during startup and creates the `users` table with `CREATE TABLE IF NOT EXISTS` before opening the HTTP listener. If initial database connectivity fails, the process exits so an orchestrator such as ECS can replace the failed task. After startup, `/healthz` remains independent of PostgreSQL while `/readyz` continues to report current database readiness.
 
 ## Environment variables
 

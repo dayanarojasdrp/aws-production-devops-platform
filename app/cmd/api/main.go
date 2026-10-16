@@ -34,6 +34,15 @@ func main() {
 	}
 	defer db.Close()
 
+	startupCtx, cancelStartup := context.WithTimeout(ctx, 10*time.Second)
+	if err := db.Ready(startupCtx); err != nil {
+		cancelStartup()
+		logger.Error("database startup check failed", "error", err)
+		os.Exit(1)
+	}
+	cancelStartup()
+	logger.Info("database startup check passed")
+
 	api := handlers.New(db, logger)
 	server := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
