@@ -57,3 +57,18 @@ output "database_credentials_secret_arn" {
   description = "Secret ARN for the future production ECS execution role."
   value       = module.rds.credentials_secret_arn
 }
+
+output "ecr_repository_arn" {
+  description = "Production ECR repository ARN for future least-privilege IAM policies."
+  value       = module.ecr.repository_arn
+}
+
+output "ecr_repository_name" {
+  description = "Production ECR repository name."
+  value       = module.ecr.repository_name
+}
+
+output "ecr_repository_url" {
+  description = "Production ECR URL used to tag, push, and deploy application images."
+  value       = module.ecr.repository_url
+}

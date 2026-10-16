@@ -159,6 +159,28 @@ variable "database_credentials_version" {
   default     = 1
 }
 
+variable "ecr_max_image_count" {
+  description = "Maximum number of application images retained in the production ECR repository."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.ecr_max_image_count >= 2 && var.ecr_max_image_count <= 1000 && floor(var.ecr_max_image_count) == var.ecr_max_image_count
+    error_message = "ecr_max_image_count must be an integer between 2 and 1000."
+  }
+}
+
+variable "ecr_force_delete" {
+  description = "Allow production repository deletion while images remain."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = var.ecr_force_delete == false
+    error_message = "Production must keep ecr_force_delete disabled."
+  }
+}
+
 variable "tags" {
   description = "Additional tags applied to production resources."
   type        = map(string)

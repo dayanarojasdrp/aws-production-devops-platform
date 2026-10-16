@@ -159,6 +159,23 @@ variable "database_credentials_version" {
   default     = 1
 }
 
+variable "ecr_max_image_count" {
+  description = "Maximum number of application images retained in the development ECR repository."
+  type        = number
+  default     = 20
+
+  validation {
+    condition     = var.ecr_max_image_count >= 2 && var.ecr_max_image_count <= 1000 && floor(var.ecr_max_image_count) == var.ecr_max_image_count
+    error_message = "ecr_max_image_count must be an integer between 2 and 1000."
+  }
+}
+
+variable "ecr_force_delete" {
+  description = "Allow development repository deletion while test images remain."
+  type        = bool
+  default     = true
+}
+
 variable "tags" {
   description = "Additional tags applied to development resources."
   type        = map(string)

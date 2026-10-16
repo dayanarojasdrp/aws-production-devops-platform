@@ -28,3 +28,6 @@ database_delete_automated_backups    = false
 database_apply_immediately           = false
 database_secret_recovery_window_days = 30
 database_credentials_version         = 1
+
+ecr_max_image_count = 50
+ecr_force_delete    = false

@@ -54,3 +54,12 @@ module "rds" {
   credentials_version         = var.database_credentials_version
   tags                        = local.common_tags
 }
+
+module "ecr" {
+  source = "../../modules/ecr"
+
+  repository_name = "${local.name_prefix}-api"
+  max_image_count = var.ecr_max_image_count
+  force_delete    = var.ecr_force_delete
+  tags            = local.common_tags
+}
