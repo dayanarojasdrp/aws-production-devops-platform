@@ -2,7 +2,7 @@
 
 Production-oriented AWS platform using Go, Terraform, containers, and automated delivery workflows.
 
-The application runs locally with Go, PostgreSQL, and Docker Compose. Terraform currently defines the remote-state bootstrap, multi-AZ network, chained security groups, private RDS PostgreSQL tier, and private ECR repositories used by the future ECS deployment.
+The application runs locally with Go, PostgreSQL, and Docker Compose. Terraform defines the remote-state bootstrap, multi-AZ network, chained security groups, private RDS PostgreSQL tier, private ECR repositories, and the ECS Fargate application runtime.
 
 ## Repository layout
 
@@ -34,4 +34,6 @@ Network ingress is restricted through security-group chaining: the public ALB ac
 
 The stateful tier uses private, encrypted RDS PostgreSQL with automated backups and Secrets Manager credentials. Development prioritizes lower cost; the production design enables Multi-AZ, longer retention, deletion protection, and a required final snapshot. See [`docs/database.md`](docs/database.md).
 
-Application images are stored in private ECR repositories with immutable Git SHA tags, scan-on-push, managed encryption, and count-based lifecycle cleanup. The repository URL and ARN are exported for the later ECS and least-privilege IAM phases. See [`docs/container-registry.md`](docs/container-registry.md).
+Application images are stored in private ECR repositories with immutable Git SHA tags, scan-on-push, managed encryption, and count-based lifecycle cleanup. ECS consumes the repository URL, while the execution role scopes pull access to its ARN. See [`docs/container-registry.md`](docs/container-registry.md).
+
+ECS services run the exact Git SHA in private application subnets without public task IPs. The Fargate task definition injects database credentials from Secrets Manager, publishes structured application output to CloudWatch Logs, and uses separate execution and application IAM roles. See [`docs/ecs-fargate.md`](docs/ecs-fargate.md).

@@ -2,7 +2,7 @@
 
 ## Infrastructure provisioning
 
-The current Terraform configuration can provision networking, security groups, RDS PostgreSQL, its Secrets Manager credential, and the private ECR repository. It does not yet deploy the application to ECS.
+The current Terraform configuration provisions networking, security groups, RDS PostgreSQL, its Secrets Manager credential, the private ECR repository, and the ECS Fargate application runtime. The ALB is intentionally not connected yet.
 
 After the bootstrap and development backend are configured:
 
@@ -22,13 +22,19 @@ Review the plan before applying, especially:
 - only the RDS security group attached;
 - instance class and Multi-AZ choice;
 - backup retention and deletion controls;
-- absence of password outputs.
+- absence of password outputs;
 - ECR tag mutability set to `IMMUTABLE`;
 - ECR scan-on-push and AES-256 encryption enabled;
 - environment-appropriate image retention and deletion behavior.
+- a full Git SHA in `ecs_image_tag`, already present in ECR;
+- Fargate tasks placed only in private application subnets with no public IP;
+- execution-role access scoped to the repository, log group, and database secret;
+- expected dev/prod CPU, memory, desired count, and log retention.
 
 After apply, use the non-sensitive outputs to record the endpoint, port, database name, and secret ARN. Do not print or copy the secret value into documentation.
 
 Production deletion protection intentionally prevents a direct destroy. Removing a production database requires an explicit configuration change, a reviewed apply that disables deletion protection, and a final snapshot. Development can be destroyed without a final snapshot when its data is confirmed disposable.
 
 After ECR exists, follow the controlled build, SHA tagging, push, pull, and immutability checks in [`container-registry.md`](container-registry.md). These manual checks produce evidence for this phase; GitHub Actions will automate the same artifact flow in a later CI/CD phase.
+
+For a new environment, follow the ECR-first bootstrap order and ECS runtime validation in [`ecs-fargate.md`](ecs-fargate.md). A normal full apply before the referenced image exists will cause the ECS service to fail steady-state validation because Fargate cannot pull a nonexistent tag.

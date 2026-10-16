@@ -18,3 +18,4 @@ All notable changes to this project will be documented in this file.
 - Reusable security module with public ALB ingress and ALB-to-ECS-to-RDS security-group chaining.
 - Private encrypted RDS PostgreSQL module with generated Secrets Manager credentials and environment-specific recovery controls.
 - Private encrypted ECR repositories with immutable image tags, scan-on-push, and environment-specific lifecycle retention.
+- Private ECS Fargate services with SHA-pinned task definitions, desired-state reconciliation, scoped runtime IAM roles, Secrets Manager injection, and CloudWatch logging.

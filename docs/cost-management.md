@@ -30,3 +30,13 @@ ECR charges for stored image data and data transfer. Repeated pushes can accumul
 - Image layers shared by several images are stored efficiently, but lifecycle cleanup still prevents indefinite growth.
 - Development permits repository cleanup with images; production requires images to be removed deliberately first.
 - Scan-on-push adds security evidence without requiring a customer-managed KMS key in this phase.
+
+## ECS Fargate and logs
+
+Fargate charges for provisioned task CPU and memory while tasks run. CloudWatch Logs charges for ingestion and retained storage, and task startup traffic through NAT can add processing charges.
+
+- Development maintains one 0.25-vCPU/512-MiB task and retains logs for 7 days.
+- Production is designed for two 0.5-vCPU/1-GiB tasks and 30-day log retention.
+- Two production tasks trade higher steady cost for replica availability and rolling-deployment capacity.
+- Task sizing is an initial hypothesis; CloudWatch and load testing must justify later increases.
+- Fargate has no EC2 worker-management overhead, but predictable high-volume workloads may be cheaper on carefully managed EC2 capacity.

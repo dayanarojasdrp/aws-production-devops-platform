@@ -49,9 +49,9 @@ Security groups are stateful. When an allowed request travels from the ALB to EC
 
 ## Outbound policy
 
-All three security groups currently declare unrestricted IPv4 egress explicitly. This is intentional for the current phase: future ECS tasks require access to ECR, CloudWatch Logs, Secrets Manager, RDS, and AWS APIs, and those dependencies do not exist yet.
+All three security groups currently declare unrestricted IPv4 egress explicitly. ECS tasks now require outbound access to ECR, CloudWatch Logs, Secrets Manager, RDS, and AWS APIs through the private-subnet NAT path.
 
-Inbound least privilege is enforced now. Egress can be narrowed later after the workload paths and any VPC endpoints are present and testable. An explicit temporary rule is preferable to relying silently on AWS's default security-group egress behavior.
+Inbound least privilege is enforced now. Egress can be narrowed after runtime traffic has been observed and the ECR, S3, CloudWatch Logs, and Secrets Manager VPC endpoint trade-offs have been evaluated. An explicit temporary rule is preferable to relying silently on AWS's default security-group egress behavior.
 
 ## Terraform ownership and contracts
 
@@ -59,8 +59,8 @@ Inbound least privilege is enforced now. Egress can be narrowed later after the 
 
 ```text
 alb_security_group_id -> future ALB module
-ecs_security_group_id -> future ECS service/task networking
-rds_security_group_id -> future RDS module
+ecs_security_group_id -> ECS Fargate task network interfaces
+rds_security_group_id -> private RDS module
 ```
 
 It does not create listeners, tasks, databases, subnets, routes, IAM permissions, or TLS certificates.
@@ -79,6 +79,12 @@ After ALB, ECS, and RDS exist, runtime evidence must prove both allowed and deni
 
 ## Database credentials
 
-The RDS password is generated rather than supplied through source code or tfvars. Secrets Manager stores the username/password document, and the future ECS execution role will be limited to reading that specific secret ARN. No password is exposed as a Terraform output.
+The RDS password is generated rather than supplied through source code or tfvars. Secrets Manager stores the username/password document, and the ECS execution role can read only that specific secret ARN. The task definition references individual JSON keys; no password is exposed as a Terraform output.
 
 See [`database.md`](database.md) for private placement, encryption, state handling, credential rotation, and the dev/prod database trade-offs.
+
+## ECS IAM identities
+
+The task execution role is used by the ECS agent and is limited to the exact ECR repository, CloudWatch log group, and database secret required to start the task. `ecr:GetAuthorizationToken` is the one unavoidable wildcard because that API does not support repository-level resource scoping.
+
+The application task role has no AWS API permissions. Pulling the image, injecting task-definition secrets, and publishing `awslogs` output do not justify granting permissions to application code.

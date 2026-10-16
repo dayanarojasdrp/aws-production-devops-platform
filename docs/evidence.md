@@ -31,3 +31,21 @@ Record this only after the development repository has been applied and the image
 | Immutable overwrite rejection | Pending negative test |
 
 The tag must match the source commit, and the digest must come from ECR. Do not use `latest` as the deployment evidence and do not record registry login tokens.
+
+## Phase 9: ECS Fargate runtime
+
+Record this only after ECR contains the required SHA and the development environment has been applied.
+
+| Evidence | Value |
+| --- | --- |
+| Cluster | Pending development deployment |
+| Service | Pending development deployment |
+| Desired / running tasks | Pending stable service |
+| Task definition revision | Pending development deployment |
+| ECR image SHA | Pending development deployment |
+| Task private subnet and ENI | Pending runtime inspection |
+| Public task IP | Must be absent |
+| Database startup log | Pending CloudWatch validation |
+| Replacement task exercise | Pending controlled stop test |
+
+Capture the original and replacement task ARNs, the service event that launches the replacement, and the corresponding CloudWatch startup logs. Never capture secret values, registry tokens, or environment-variable dumps.
