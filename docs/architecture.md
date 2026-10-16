@@ -6,6 +6,12 @@ The platform follows a three-tier AWS network design:
 Internet -> public ALB -> private ECS tasks -> isolated RDS PostgreSQL
 ```
 
+The application delivery path is separate from the request path:
+
+```text
+Git commit -> GitHub Actions -> private ECR repository -> ECS task definition
+```
+
 Every tier spans two Availability Zones. Only the load balancer tier has an Internet Gateway route. Application workloads use NAT for outbound-only connectivity, while database subnets have no default Internet route.
 
-See [`networking.md`](networking.md) for CIDRs, route tables, NAT trade-offs, and module boundaries. See [`security.md`](security.md) for the ALB-to-ECS-to-RDS security-group chain and [`database.md`](database.md) for private PostgreSQL, backups, encryption, and credential handling.
+See [`networking.md`](networking.md) for CIDRs, route tables, NAT trade-offs, and module boundaries. See [`security.md`](security.md) for the ALB-to-ECS-to-RDS security-group chain, [`database.md`](database.md) for private PostgreSQL, and [`container-registry.md`](container-registry.md) for artifact traceability and retention.

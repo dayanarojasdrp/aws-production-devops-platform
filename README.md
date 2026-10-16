@@ -1,8 +1,8 @@
 # AWS Production DevOps Platform
 
-Production-oriented AWS platform scaffold using Go, Terraform, containers, and automated delivery workflows.
+Production-oriented AWS platform using Go, Terraform, containers, and automated delivery workflows.
 
-The current phase focuses on proving the application locally with Go, PostgreSQL, and Docker Compose. AWS infrastructure remains scaffolded for a later phase.
+The application runs locally with Go, PostgreSQL, and Docker Compose. Terraform currently defines the remote-state bootstrap, multi-AZ network, chained security groups, private RDS PostgreSQL tier, and private ECR repositories used by the future ECS deployment.
 
 ## Repository layout
 
@@ -33,3 +33,5 @@ The first application-infrastructure module builds the three-tier VPC. See [`doc
 Network ingress is restricted through security-group chaining: the public ALB accepts ports 80/443, ECS accepts port 8080 only from the ALB security group, and RDS accepts port 5432 only from the ECS security group. See [`docs/security.md`](docs/security.md).
 
 The stateful tier uses private, encrypted RDS PostgreSQL with automated backups and Secrets Manager credentials. Development prioritizes lower cost; the production design enables Multi-AZ, longer retention, deletion protection, and a required final snapshot. See [`docs/database.md`](docs/database.md).
+
+Application images are stored in private ECR repositories with immutable Git SHA tags, scan-on-push, managed encryption, and count-based lifecycle cleanup. The repository URL and ARN are exported for the later ECS and least-privilege IAM phases. See [`docs/container-registry.md`](docs/container-registry.md).

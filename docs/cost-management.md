@@ -20,3 +20,13 @@ RDS instance runtime, allocated storage, backup storage beyond the included allo
 - Storage autoscaling has an explicit maximum in each environment.
 - Production is represented as code and does not need to remain deployed for portfolio development.
 - Destroy development resources when they are no longer needed, but confirm the data is disposable before removing its database or secret.
+
+## Container registry
+
+ECR charges for stored image data and data transfer. Repeated pushes can accumulate layers even when an image is no longer deployed.
+
+- Development retains the newest 20 images.
+- Production retains the newest 50 images to provide a larger rollback window.
+- Image layers shared by several images are stored efficiently, but lifecycle cleanup still prevents indefinite growth.
+- Development permits repository cleanup with images; production requires images to be removed deliberately first.
+- Scan-on-push adds security evidence without requiring a customer-managed KMS key in this phase.
