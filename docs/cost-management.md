@@ -10,3 +10,13 @@ NAT Gateways have hourly and data-processing charges even when application traff
 - A later review should compare NAT traffic cost with VPC endpoints for ECR, S3, CloudWatch Logs, and Secrets Manager.
 
 All networking resources are tagged with `Project`, `Environment`, `ManagedBy`, and `Owner` to support cost allocation.
+
+## Database and secrets
+
+RDS instance runtime, allocated storage, backup storage beyond the included allowance, Multi-AZ deployment, and Secrets Manager secrets can all incur charges.
+
+- Development uses `db.t4g.micro`, Single-AZ, 20 GiB gp3, and short backup retention.
+- Production is designed for `db.t4g.small`, Multi-AZ, more storage, and longer retention.
+- Storage autoscaling has an explicit maximum in each environment.
+- Production is represented as code and does not need to remain deployed for portfolio development.
+- Destroy development resources when they are no longer needed, but confirm the data is disposable before removing its database or secret.

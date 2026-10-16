@@ -31,3 +31,5 @@ After applying the bootstrap, follow [`docs/oidc.md`](docs/oidc.md) to configure
 The first application-infrastructure module builds the three-tier VPC. See [`docs/networking.md`](docs/networking.md) for subnet placement, routing, NAT availability/cost trade-offs, and module outputs.
 
 Network ingress is restricted through security-group chaining: the public ALB accepts ports 80/443, ECS accepts port 8080 only from the ALB security group, and RDS accepts port 5432 only from the ECS security group. See [`docs/security.md`](docs/security.md).
+
+The stateful tier uses private, encrypted RDS PostgreSQL with automated backups and Secrets Manager credentials. Development prioritizes lower cost; the production design enables Multi-AZ, longer retention, deletion protection, and a required final snapshot. See [`docs/database.md`](docs/database.md).

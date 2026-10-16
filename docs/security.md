@@ -76,3 +76,9 @@ make security-test
 The mocked Terraform test verifies the public ALB ports, the ALB-to-ECS reference, the ECS-to-RDS reference, and the explicit outbound policy. Environment validation also confirms that both dev and prod consume the security module correctly.
 
 After ALB, ECS, and RDS exist, runtime evidence must prove both allowed and denied paths. A Terraform plan alone cannot prove network connectivity.
+
+## Database credentials
+
+The RDS password is generated rather than supplied through source code or tfvars. Secrets Manager stores the username/password document, and the future ECS execution role will be limited to reading that specific secret ARN. No password is exposed as a Terraform output.
+
+See [`database.md`](database.md) for private placement, encryption, state handling, credential rotation, and the dev/prod database trade-offs.

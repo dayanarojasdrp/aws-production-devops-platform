@@ -16,3 +16,4 @@ All notable changes to this project will be documented in this file.
 - Unit-tested API configuration and HTTP boundaries, including explicit PostgreSQL SSL policy and structured response logging.
 - Terraform-specific GitHub OIDC role naming in preparation for separate deployment and ECS runtime identities.
 - Reusable security module with public ALB ingress and ALB-to-ECS-to-RDS security-group chaining.
+- Private encrypted RDS PostgreSQL module with generated Secrets Manager credentials and environment-specific recovery controls.
