@@ -181,6 +181,55 @@ variable "ecr_force_delete" {
   }
 }
 
+variable "ecs_image_tag" {
+  description = "Full Git commit SHA of the production API image already pushed to ECR."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9a-f]{40}$", var.ecs_image_tag))
+    error_message = "ecs_image_tag must be a full 40-character lowercase Git SHA."
+  }
+}
+
+variable "ecs_task_cpu" {
+  description = "Production Fargate task CPU units."
+  type        = number
+  default     = 512
+
+  validation {
+    condition     = contains([512, 1024], var.ecs_task_cpu)
+    error_message = "Production ecs_task_cpu must be 512 or 1024."
+  }
+}
+
+variable "ecs_task_memory" {
+  description = "Production Fargate task memory in MiB."
+  type        = number
+  default     = 1024
+}
+
+variable "ecs_desired_count" {
+  description = "Number of production API tasks maintained by the ECS service."
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.ecs_desired_count >= 2 && var.ecs_desired_count <= 20 && floor(var.ecs_desired_count) == var.ecs_desired_count
+    error_message = "Production ecs_desired_count must be an integer between 2 and 20."
+  }
+}
+
+variable "ecs_log_retention_days" {
+  description = "Production application log retention in CloudWatch Logs."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = contains([30, 60, 90, 120, 150, 180, 365], var.ecs_log_retention_days)
+    error_message = "Production ecs_log_retention_days must be one of 30, 60, 90, 120, 150, 180, or 365."
+  }
+}
+
 variable "tags" {
   description = "Additional tags applied to production resources."
   type        = map(string)

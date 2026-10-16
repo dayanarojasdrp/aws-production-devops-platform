@@ -63,3 +63,25 @@ module "ecr" {
   force_delete    = var.ecr_force_delete
   tags            = local.common_tags
 }
+
+module "ecs" {
+  source = "../../modules/ecs"
+
+  name_prefix                     = local.name_prefix
+  aws_region                      = var.aws_region
+  ecr_repository_url              = module.ecr.repository_url
+  ecr_repository_arn              = module.ecr.repository_arn
+  image_tag                       = var.ecs_image_tag
+  private_subnet_ids              = module.networking.private_app_subnet_ids
+  ecs_security_group_id           = module.security.ecs_security_group_id
+  database_host                   = module.rds.database_endpoint
+  database_port                   = module.rds.database_port
+  database_name                   = module.rds.database_name
+  database_credentials_secret_arn = module.rds.credentials_secret_arn
+  container_port                  = var.application_port
+  task_cpu                        = var.ecs_task_cpu
+  task_memory                     = var.ecs_task_memory
+  desired_count                   = var.ecs_desired_count
+  log_retention_days              = var.ecs_log_retention_days
+  tags                            = local.common_tags
+}

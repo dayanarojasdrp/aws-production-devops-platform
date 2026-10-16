@@ -31,3 +31,10 @@ database_credentials_version         = 1
 
 ecr_max_image_count = 50
 ecr_force_delete    = false
+
+# Required: replace with the full SHA of an image that already exists in production ECR.
+ecs_image_tag          = "0123456789abcdef0123456789abcdef01234567"
+ecs_task_cpu           = 512
+ecs_task_memory        = 1024
+ecs_desired_count      = 2
+ecs_log_retention_days = 30

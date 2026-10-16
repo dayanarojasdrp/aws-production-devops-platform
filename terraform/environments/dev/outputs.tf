@@ -72,3 +72,43 @@ output "ecr_repository_url" {
   description = "Development ECR URL used to tag, push, and deploy application images."
   value       = module.ecr.repository_url
 }
+
+output "ecs_cluster_arn" {
+  description = "Development ECS cluster ARN."
+  value       = module.ecs.cluster_arn
+}
+
+output "ecs_cluster_name" {
+  description = "Development ECS cluster name used by AWS CLI operational commands."
+  value       = module.ecs.cluster_name
+}
+
+output "ecs_service_name" {
+  description = "Development ECS service that maintains the API task count."
+  value       = module.ecs.service_name
+}
+
+output "ecs_task_definition_arn" {
+  description = "Development API task definition ARN and revision."
+  value       = module.ecs.task_definition_arn
+}
+
+output "ecs_execution_role_arn" {
+  description = "Development role used by ECS to prepare and start tasks."
+  value       = module.ecs.execution_role_arn
+}
+
+output "ecs_task_role_arn" {
+  description = "Permission-free role exposed to the development API container."
+  value       = module.ecs.task_role_arn
+}
+
+output "ecs_log_group_name" {
+  description = "CloudWatch log group receiving development API stdout and stderr."
+  value       = module.ecs.log_group_name
+}
+
+output "ecs_container_image" {
+  description = "Exact immutable image registered in the development task definition."
+  value       = module.ecs.container_image
+}
