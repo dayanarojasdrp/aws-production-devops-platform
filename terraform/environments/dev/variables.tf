@@ -75,6 +75,90 @@ variable "postgres_port" {
   default     = 5432
 }
 
+variable "database_name" {
+  description = "Initial PostgreSQL database name for development."
+  type        = string
+  default     = "platform"
+}
+
+variable "database_master_username" {
+  description = "PostgreSQL master username stored in Secrets Manager."
+  type        = string
+  default     = "appuser"
+}
+
+variable "database_engine_version" {
+  description = "PostgreSQL major engine version for development."
+  type        = string
+  default     = "16"
+}
+
+variable "database_instance_class" {
+  description = "Cost-oriented RDS instance class for development."
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "database_allocated_storage" {
+  description = "Initial development database storage in GiB."
+  type        = number
+  default     = 20
+}
+
+variable "database_max_allocated_storage" {
+  description = "Development storage autoscaling limit in GiB."
+  type        = number
+  default     = 50
+}
+
+variable "database_multi_az" {
+  description = "Enable Multi-AZ for development."
+  type        = bool
+  default     = false
+}
+
+variable "database_backup_retention_days" {
+  description = "Development automated backup retention in days."
+  type        = number
+  default     = 1
+}
+
+variable "database_deletion_protection" {
+  description = "Enable deletion protection for the development database."
+  type        = bool
+  default     = false
+}
+
+variable "database_skip_final_snapshot" {
+  description = "Allow development deletion without a final snapshot."
+  type        = bool
+  default     = true
+}
+
+variable "database_delete_automated_backups" {
+  description = "Delete automated backups with the development database."
+  type        = bool
+  default     = true
+}
+
+variable "database_apply_immediately" {
+  description = "Apply development database changes immediately."
+  type        = bool
+  default     = true
+}
+
+variable "database_secret_recovery_window_days" {
+  description = "Recovery window for development secret deletion."
+  type        = number
+  default     = 0
+}
+
+variable "database_credentials_version" {
+  description = "Increment deliberately to rotate development database credentials."
+  type        = number
+  default     = 1
+}
+
 variable "tags" {
   description = "Additional tags applied to development resources."
   type        = map(string)

@@ -37,3 +37,23 @@ output "rds_security_group_id" {
   description = "Security group ID for the future production RDS instance."
   value       = module.security.rds_security_group_id
 }
+
+output "database_endpoint" {
+  description = "Private production RDS hostname for future ECS tasks."
+  value       = module.rds.database_endpoint
+}
+
+output "database_port" {
+  description = "Production PostgreSQL listener port."
+  value       = module.rds.database_port
+}
+
+output "database_name" {
+  description = "Production PostgreSQL database name."
+  value       = module.rds.database_name
+}
+
+output "database_credentials_secret_arn" {
+  description = "Secret ARN for the future production ECS execution role."
+  value       = module.rds.credentials_secret_arn
+}

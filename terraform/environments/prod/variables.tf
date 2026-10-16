@@ -75,6 +75,90 @@ variable "postgres_port" {
   default     = 5432
 }
 
+variable "database_name" {
+  description = "Initial PostgreSQL database name for production."
+  type        = string
+  default     = "platform"
+}
+
+variable "database_master_username" {
+  description = "PostgreSQL master username stored in Secrets Manager."
+  type        = string
+  default     = "appuser"
+}
+
+variable "database_engine_version" {
+  description = "PostgreSQL major engine version for production."
+  type        = string
+  default     = "16"
+}
+
+variable "database_instance_class" {
+  description = "Availability-oriented RDS instance class for production design."
+  type        = string
+  default     = "db.t4g.small"
+}
+
+variable "database_allocated_storage" {
+  description = "Initial production database storage in GiB."
+  type        = number
+  default     = 50
+}
+
+variable "database_max_allocated_storage" {
+  description = "Production storage autoscaling limit in GiB."
+  type        = number
+  default     = 200
+}
+
+variable "database_multi_az" {
+  description = "Enable Multi-AZ for production."
+  type        = bool
+  default     = true
+}
+
+variable "database_backup_retention_days" {
+  description = "Production automated backup retention in days."
+  type        = number
+  default     = 7
+}
+
+variable "database_deletion_protection" {
+  description = "Enable deletion protection for the production database."
+  type        = bool
+  default     = true
+}
+
+variable "database_skip_final_snapshot" {
+  description = "Allow production deletion without a final snapshot."
+  type        = bool
+  default     = false
+}
+
+variable "database_delete_automated_backups" {
+  description = "Delete automated backups with the production database."
+  type        = bool
+  default     = false
+}
+
+variable "database_apply_immediately" {
+  description = "Apply production database changes immediately."
+  type        = bool
+  default     = false
+}
+
+variable "database_secret_recovery_window_days" {
+  description = "Recovery window for production secret deletion."
+  type        = number
+  default     = 30
+}
+
+variable "database_credentials_version" {
+  description = "Increment deliberately to rotate production database credentials."
+  type        = number
+  default     = 1
+}
+
 variable "tags" {
   description = "Additional tags applied to production resources."
   type        = map(string)
