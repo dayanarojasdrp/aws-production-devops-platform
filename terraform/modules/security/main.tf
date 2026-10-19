@@ -38,7 +38,7 @@ resource "aws_vpc_security_group_ingress_rule" "alb_http" {
   for_each = var.alb_ingress_ipv4_cidrs
 
   security_group_id = aws_security_group.alb.id
-  description       = "Public HTTP used only by the future HTTPS redirect listener"
+  description       = "Public HTTP entry point until the HTTPS redirect phase"
   cidr_ipv4         = each.value
   from_port         = 80
   to_port           = 80
@@ -74,11 +74,13 @@ resource "aws_vpc_security_group_ingress_rule" "rds_from_ecs" {
   ip_protocol                  = "tcp"
 }
 
-resource "aws_vpc_security_group_egress_rule" "alb" {
-  security_group_id = aws_security_group.alb.id
-  description       = "Temporary unrestricted egress until workload-specific hardening"
-  cidr_ipv4         = "0.0.0.0/0"
-  ip_protocol       = "-1"
+resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Application and health-check traffic to ECS tasks"
+  referenced_security_group_id = aws_security_group.ecs.id
+  from_port                    = var.application_port
+  to_port                      = var.application_port
+  ip_protocol                  = "tcp"
 }
 
 resource "aws_vpc_security_group_egress_rule" "ecs" {
@@ -90,7 +92,7 @@ resource "aws_vpc_security_group_egress_rule" "ecs" {
 
 resource "aws_vpc_security_group_egress_rule" "rds" {
   security_group_id = aws_security_group.rds.id
-  description       = "Default response and managed-service egress"
+  description       = "Explicit managed-service egress pending later hardening"
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
 }

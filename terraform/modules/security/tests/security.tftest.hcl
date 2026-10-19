@@ -58,11 +58,21 @@ run "security_group_chaining" {
   }
 
   assert {
+    condition = (
+      aws_vpc_security_group_egress_rule.alb_to_ecs.referenced_security_group_id == aws_security_group.ecs.id &&
+      aws_vpc_security_group_egress_rule.alb_to_ecs.cidr_ipv4 == null &&
+      aws_vpc_security_group_egress_rule.alb_to_ecs.from_port == 8080 &&
+      aws_vpc_security_group_egress_rule.alb_to_ecs.to_port == 8080 &&
+      aws_vpc_security_group_egress_rule.alb_to_ecs.ip_protocol == "tcp"
+    )
+    error_message = "ALB egress must reach only the ECS security group on the application port."
+  }
+
+  assert {
     condition = alltrue([
-      aws_vpc_security_group_egress_rule.alb.ip_protocol == "-1",
       aws_vpc_security_group_egress_rule.ecs.ip_protocol == "-1",
       aws_vpc_security_group_egress_rule.rds.ip_protocol == "-1",
     ])
-    error_message = "All three security groups must declare the temporary all-egress policy explicitly."
+    error_message = "ECS and RDS must continue to declare their documented all-egress policy explicitly."
   }
 }
