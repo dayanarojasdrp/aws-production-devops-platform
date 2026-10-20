@@ -64,24 +64,41 @@ module "ecr" {
   tags            = local.common_tags
 }
 
+module "alb" {
+  source = "../../modules/alb"
+
+  name_prefix                  = local.name_prefix
+  vpc_id                       = module.networking.vpc_id
+  public_subnet_ids            = module.networking.public_subnet_ids
+  alb_security_group_id        = module.security.alb_security_group_id
+  container_port               = var.application_port
+  deregistration_delay_seconds = var.alb_deregistration_delay_seconds
+  enable_deletion_protection   = var.alb_deletion_protection
+  tags                         = local.common_tags
+}
+
 module "ecs" {
   source = "../../modules/ecs"
 
-  name_prefix                     = local.name_prefix
-  aws_region                      = var.aws_region
-  ecr_repository_url              = module.ecr.repository_url
-  ecr_repository_arn              = module.ecr.repository_arn
-  image_tag                       = var.ecs_image_tag
-  private_subnet_ids              = module.networking.private_app_subnet_ids
-  ecs_security_group_id           = module.security.ecs_security_group_id
-  database_host                   = module.rds.database_endpoint
-  database_port                   = module.rds.database_port
-  database_name                   = module.rds.database_name
-  database_credentials_secret_arn = module.rds.credentials_secret_arn
-  container_port                  = var.application_port
-  task_cpu                        = var.ecs_task_cpu
-  task_memory                     = var.ecs_task_memory
-  desired_count                   = var.ecs_desired_count
-  log_retention_days              = var.ecs_log_retention_days
-  tags                            = local.common_tags
+  name_prefix                       = local.name_prefix
+  aws_region                        = var.aws_region
+  ecr_repository_url                = module.ecr.repository_url
+  ecr_repository_arn                = module.ecr.repository_arn
+  image_tag                         = var.ecs_image_tag
+  private_subnet_ids                = module.networking.private_app_subnet_ids
+  ecs_security_group_id             = module.security.ecs_security_group_id
+  target_group_arn                  = module.alb.target_group_arn
+  database_host                     = module.rds.database_endpoint
+  database_port                     = module.rds.database_port
+  database_name                     = module.rds.database_name
+  database_credentials_secret_arn   = module.rds.credentials_secret_arn
+  container_port                    = var.application_port
+  task_cpu                          = var.ecs_task_cpu
+  task_memory                       = var.ecs_task_memory
+  desired_count                     = var.ecs_desired_count
+  health_check_grace_period_seconds = var.ecs_health_check_grace_period_seconds
+  log_retention_days                = var.ecs_log_retention_days
+  tags                              = local.common_tags
+
+  depends_on = [module.alb]
 }

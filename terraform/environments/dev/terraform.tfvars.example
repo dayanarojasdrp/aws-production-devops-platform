@@ -10,9 +10,11 @@ private_db_subnet_cidrs  = ["10.0.21.0/24", "10.0.22.0/24"]
 # One NAT reduces cost but makes development outbound access depend on one AZ.
 single_nat_gateway = true
 
-alb_ingress_ipv4_cidrs = ["0.0.0.0/0"]
-application_port       = 8080
-postgres_port          = 5432
+alb_ingress_ipv4_cidrs           = ["0.0.0.0/0"]
+application_port                 = 8080
+alb_deregistration_delay_seconds = 30
+alb_deletion_protection           = false
+postgres_port                    = 5432
 
 database_name                        = "platform"
 database_master_username             = "appuser"
@@ -33,8 +35,9 @@ ecr_max_image_count = 20
 ecr_force_delete    = true
 
 # Required: replace with the full SHA of an image that already exists in development ECR.
-ecs_image_tag          = "0123456789abcdef0123456789abcdef01234567"
-ecs_task_cpu           = 256
-ecs_task_memory        = 512
-ecs_desired_count      = 1
-ecs_log_retention_days = 7
+ecs_image_tag                         = "0123456789abcdef0123456789abcdef01234567"
+ecs_task_cpu                          = 256
+ecs_task_memory                       = 512
+ecs_desired_count                     = 1
+ecs_health_check_grace_period_seconds = 30
+ecs_log_retention_days                = 7

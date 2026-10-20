@@ -4,17 +4,17 @@ output "vpc_id" {
 }
 
 output "public_subnet_ids" {
-  description = "Public subnet IDs for the future internet-facing ALB."
+  description = "Public subnet IDs containing the internet-facing ALB."
   value       = module.networking.public_subnet_ids
 }
 
 output "private_app_subnet_ids" {
-  description = "Private application subnet IDs for future ECS tasks."
+  description = "Private application subnet IDs containing ECS tasks."
   value       = module.networking.private_app_subnet_ids
 }
 
 output "private_db_subnet_ids" {
-  description = "Isolated database subnet IDs for the future RDS subnet group."
+  description = "Isolated database subnet IDs containing the RDS subnet group."
   value       = module.networking.private_db_subnet_ids
 }
 
@@ -24,22 +24,22 @@ output "nat_gateway_ids" {
 }
 
 output "alb_security_group_id" {
-  description = "Security group ID for the future development ALB."
+  description = "Security group ID for the development ALB."
   value       = module.security.alb_security_group_id
 }
 
 output "ecs_security_group_id" {
-  description = "Security group ID for future development ECS tasks."
+  description = "Security group ID for development ECS tasks."
   value       = module.security.ecs_security_group_id
 }
 
 output "rds_security_group_id" {
-  description = "Security group ID for the future development RDS instance."
+  description = "Security group ID for the development RDS instance."
   value       = module.security.rds_security_group_id
 }
 
 output "database_endpoint" {
-  description = "Private development RDS hostname for future ECS tasks."
+  description = "Private development RDS hostname used by ECS tasks."
   value       = module.rds.database_endpoint
 }
 
@@ -54,12 +54,12 @@ output "database_name" {
 }
 
 output "database_credentials_secret_arn" {
-  description = "Secret ARN for the future development ECS execution role."
+  description = "Secret ARN read by the development ECS execution role."
   value       = module.rds.credentials_secret_arn
 }
 
 output "ecr_repository_arn" {
-  description = "Development ECR repository ARN for future least-privilege IAM policies."
+  description = "Development ECR repository ARN used by the least-privilege ECS execution policy."
   value       = module.ecr.repository_arn
 }
 
@@ -71,6 +71,36 @@ output "ecr_repository_name" {
 output "ecr_repository_url" {
   description = "Development ECR URL used to tag, push, and deploy application images."
   value       = module.ecr.repository_url
+}
+
+output "alb_arn" {
+  description = "Development Application Load Balancer ARN."
+  value       = module.alb.alb_arn
+}
+
+output "alb_dns_name" {
+  description = "Public development ALB DNS name used for Phase 10 HTTP validation."
+  value       = module.alb.alb_dns_name
+}
+
+output "alb_zone_id" {
+  description = "Development ALB canonical hosted zone ID for the future Route 53 alias."
+  value       = module.alb.alb_zone_id
+}
+
+output "alb_http_listener_arn" {
+  description = "Development HTTP listener ARN."
+  value       = module.alb.http_listener_arn
+}
+
+output "alb_target_group_arn" {
+  description = "Development ECS target group ARN."
+  value       = module.alb.target_group_arn
+}
+
+output "alb_target_group_name" {
+  description = "Development ECS target group name used by AWS CLI health commands."
+  value       = module.alb.target_group_name
 }
 
 output "ecs_cluster_arn" {

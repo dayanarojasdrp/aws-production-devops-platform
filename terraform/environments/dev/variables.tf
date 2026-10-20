@@ -69,6 +69,23 @@ variable "application_port" {
   default     = 8080
 }
 
+variable "alb_deregistration_delay_seconds" {
+  description = "Development connection-draining period for targets removed from the ALB."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.alb_deregistration_delay_seconds >= 0 && var.alb_deregistration_delay_seconds <= 3600 && floor(var.alb_deregistration_delay_seconds) == var.alb_deregistration_delay_seconds
+    error_message = "alb_deregistration_delay_seconds must be an integer between 0 and 3600."
+  }
+}
+
+variable "alb_deletion_protection" {
+  description = "Protect the development ALB from accidental deletion."
+  type        = bool
+  default     = false
+}
+
 variable "postgres_port" {
   description = "Port used from development ECS tasks to PostgreSQL."
   type        = number
@@ -211,6 +228,17 @@ variable "ecs_desired_count" {
   validation {
     condition     = var.ecs_desired_count >= 1 && var.ecs_desired_count <= 10 && floor(var.ecs_desired_count) == var.ecs_desired_count
     error_message = "ecs_desired_count must be an integer between 1 and 10."
+  }
+}
+
+variable "ecs_health_check_grace_period_seconds" {
+  description = "Development startup grace period before ECS reacts to ALB health failures."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.ecs_health_check_grace_period_seconds >= 0 && var.ecs_health_check_grace_period_seconds <= 300 && floor(var.ecs_health_check_grace_period_seconds) == var.ecs_health_check_grace_period_seconds
+    error_message = "ecs_health_check_grace_period_seconds must be an integer between 0 and 300."
   }
 }
 
