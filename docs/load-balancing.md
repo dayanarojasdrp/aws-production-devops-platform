@@ -16,7 +16,7 @@ Users never connect to a task IP. They connect to the stable ALB endpoint while 
 ```text
 Internet
    |
-   | HTTP :80 (temporary until the HTTPS phase)
+   | HTTPS :443 through the configured Route 53 hostname
    v
 internet-facing ALB
    |  public subnet A + public subnet B
@@ -32,10 +32,10 @@ Go API
 The ALB spans both public subnets and carries the ALB security group. Fargate tasks remain in private application subnets without public IPs and carry the ECS security group. The security chain is:
 
 ```text
-0.0.0.0/0 -- TCP 80 --> ALB SG -- TCP 8080 --> ECS SG
+0.0.0.0/0 -- TCP 80/443 --> ALB SG -- TCP 8080 --> ECS SG
 ```
 
-Port `443` is already permitted at the ALB security group for the following DNS/HTTPS phase, but no TLS listener is fabricated before an ACM certificate exists.
+Port `443` terminates TLS when a real domain and public hosted zone are configured. Port `80` then returns only a permanent HTTPS redirect. Until HTTPS is enabled, port `80` retains the initial forward action so the ALB can be validated through its AWS-assigned DNS name without fabricating a certificate.
 
 ## ALB, listener, and target group
 
@@ -45,7 +45,7 @@ These resources are related but not interchangeable:
 - The **listener** accepts a protocol and port and chooses an action.
 - The **target group** contains the destinations, health policy, and connection-draining behavior.
 
-The current listener accepts HTTP on port `80` and forwards to the API target group. The next phase will add an HTTPS listener on `443` and replace HTTP forwarding with a redirect to HTTPS.
+With HTTPS enabled, the listener on port `443` presents the ACM certificate and forwards to the API target group. The listener on port `80` preserves host, path, and query in an `HTTP_301` redirect to HTTPS. See [`dns-https.md`](dns-https.md) for certificate and DNS ownership.
 
 There is no separate path-based listener rule yet because this ALB serves one backend and the listener's default forward action is sufficient. Explicit priority rules become useful only when routing several hosts or paths to different target groups.
 
@@ -109,7 +109,7 @@ ALB egress is no longer `0.0.0.0/0`. It is restricted by security-group referenc
 The result is:
 
 ```text
-Internet ------> ALB :80
+Internet ------> ALB :80/443
 Internet --X--> ECS :8080
 ALB -----------> ECS :8080
 ALB -------X---> any unrelated destination
@@ -127,6 +127,7 @@ ECS egress remains broader because tasks currently need RDS plus ECR, Secrets Ma
 | ALB deletion protection | Disabled | Enabled |
 | Deregistration delay | 30 seconds | 30 seconds |
 | Health path | `/healthz` | `/healthz` |
+| Suggested hostname | `api-dev.example.com` | `api.example.com` |
 
 One development task validates routing and replacement but does not demonstrate uninterrupted service during a task stop. Availability evidence requires two running tasks, either in the production design or by temporarily and deliberately setting development `ecs_desired_count = 2`.
 
@@ -136,7 +137,7 @@ The ECS module explicitly depends on the ALB module. This ensures the ALB, targe
 
 ## Runtime validation
 
-After a reviewed development apply:
+Before HTTPS is enabled, Phase 10 can still be validated through the AWS-assigned ALB endpoint:
 
 ```sh
 ALB_DNS="$(terraform -chdir=terraform/environments/dev output -raw alb_dns_name)"
@@ -160,6 +161,8 @@ Required evidence:
 5. `GET /healthz` through the ALB returns HTTP `200`.
 6. `GET /readyz` proves the routed API can reach PostgreSQL.
 7. No ECS task has a public IP.
+
+Once HTTPS is enabled, use the custom hostname and trusted certificate checks in [`dns-https.md`](dns-https.md). The raw ALB hostname is not a valid TLS test for a certificate issued to the application hostname.
 
 ## Controlled failure exercise
 
@@ -214,8 +217,6 @@ Capture the old and replacement task ARNs, target-health transitions, ECS servic
 
 ## Deliberately deferred controls
 
-- ACM certificate, HTTPS listener, and HTTP-to-HTTPS redirect: next phase.
-- Route 53 alias and custom domain: next phase.
 - Deployment circuit breaker and rollback: rollback phase.
 - Auto Scaling: scaling phase.
 - ALB metrics, alarms, dashboard, and access logs: observability phase.

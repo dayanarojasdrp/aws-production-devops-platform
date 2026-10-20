@@ -25,3 +25,5 @@ Container Insights, dashboards, metric filters, and alarms remain part of the de
 ## ALB target health
 
 The target group continuously evaluates `GET /healthz` and exposes target states and reason codes through `aws elbv2 describe-target-health`. Standard ALB metrics such as request count, response time, HTTP 4xx/5xx, healthy hosts, and unhealthy hosts become available after deployment. Dashboards, alarms, and access-log storage remain deliberately deferred to the observability phase.
+
+The HTTPS edge also needs later operational coverage for TLS negotiation errors, certificate renewal events, and DNS availability. ACM managed renewal reduces manual work but does not remove the need to alert when renewal eligibility or validation fails.

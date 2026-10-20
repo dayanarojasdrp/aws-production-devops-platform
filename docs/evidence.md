@@ -67,3 +67,21 @@ Record this only after the ALB and ECS service have been applied with an image t
 | Requests during one-target failure | Pending continuous curl evidence |
 
 For failure evidence, capture the initial healthy targets, the stopped/draining target, the still-healthy target, the replacement task, and the final restored healthy count. A single development task can prove replacement but cannot prove uninterrupted availability; use two tasks for that claim.
+
+## Phase 11: Route 53, ACM, and HTTPS
+
+Record this only after a real domain is delegated, HTTPS is enabled, and the environment is applied.
+
+| Evidence | Value |
+| --- | --- |
+| Application hostname | Pending domain configuration |
+| Route 53 `A` alias target | Pending HTTPS deployment |
+| ACM certificate status | Pending `ISSUED` validation |
+| Certificate hostname | Must equal the application hostname |
+| HTTPS listener / TLS policy | Pending HTTPS deployment |
+| HTTP request | Must return `301` with an HTTPS `Location` |
+| HTTPS `/healthz` | Pending trusted HTTP `200` validation |
+| HTTPS `/readyz` | Pending database readiness validation |
+| Certificate verification | Must succeed without `--insecure` |
+
+Capture the redirect with its `Location`, the trusted HTTPS response, and enough AWS metadata to connect the hostname, certificate, listener, and ALB. Do not capture credentials, tokens, certificate private material, or database secrets.

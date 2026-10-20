@@ -23,11 +23,11 @@ RDS Security Group
 | Source | Destination | Port | Reason |
 | --- | --- | ---: | --- |
 | Internet (`0.0.0.0/0`) | ALB SG | 443 | Public HTTPS entry point |
-| Internet (`0.0.0.0/0`) | ALB SG | 80 | Future redirect from HTTP to HTTPS |
+| Internet (`0.0.0.0/0`) | ALB SG | 80 | Permanent redirect from HTTP to HTTPS when TLS is enabled |
 | ALB SG | ECS SG | 8080 | Application traffic to Go API tasks |
 | ECS SG | RDS SG | 5432 | PostgreSQL traffic from the application |
 
-Only the ALB security group contains public inbound rules. ECS does not expose port 8080 to a public CIDR, and RDS does not expose port 5432 to a public CIDR. Port `80` currently reaches the ALB's temporary HTTP forwarding listener; the HTTPS phase will change that listener to a redirect rather than forward plaintext HTTP to the application.
+Only the ALB security group contains public inbound rules. ECS does not expose port 8080 to a public CIDR, and RDS does not expose port 5432 to a public CIDR. With HTTPS enabled, port `80` returns a `301` redirect without forwarding plaintext application traffic; port `443` terminates TLS with ACM before the ALB forwards private HTTP to ECS.
 
 ## Why security-group references are used
 

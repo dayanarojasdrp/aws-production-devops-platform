@@ -2,7 +2,7 @@
 
 ## Infrastructure provisioning
 
-The current Terraform configuration provisions networking, security groups, RDS PostgreSQL, its Secrets Manager credential, the private ECR repository, the ECS Fargate application runtime, and an internet-facing ALB connected to the ECS service.
+The current Terraform configuration provisions networking, security groups, RDS PostgreSQL, its Secrets Manager credential, the private ECR repository, the ECS Fargate application runtime, and an internet-facing ALB connected to the ECS service. With a real domain and public hosted zone, it also provisions the Route 53 alias, DNS-validated ACM certificate, HTTPS listener, and HTTP redirect.
 
 After the bootstrap and development backend are configured:
 
@@ -36,6 +36,11 @@ Review the plan before applying, especially:
 - an ECS service load-balancer block using container `api` and the target group;
 - ALB egress restricted to the ECS security group on `8080`;
 - production ALB deletion protection enabled.
+- HTTPS disabled unless a real hostname and authoritative Route 53 zone are supplied;
+- when enabled, ACM DNS validation in the intended public hosted zone;
+- a `443` HTTPS listener using the reviewed TLS policy;
+- the port `80` default action changing to `HTTP_301` redirect;
+- the Route 53 `A` alias targeting the ALB DNS name and zone ID.
 
 After apply, use the non-sensitive outputs to record the endpoint, port, database name, and secret ARN. Do not print or copy the secret value into documentation.
 
@@ -45,4 +50,4 @@ After ECR exists, follow the controlled build, SHA tagging, push, pull, and immu
 
 For a new environment, follow the ECR-first bootstrap order and ECS runtime validation in [`ecs-fargate.md`](ecs-fargate.md). A normal full apply before the referenced image exists will cause the ECS service to fail steady-state validation because Fargate cannot pull a nonexistent tag.
 
-After the service stabilizes, follow the ALB health, HTTP, database readiness, and controlled target-failure checks in [`load-balancing.md`](load-balancing.md). HTTP exists only for Phase 10 validation and must be replaced by HTTPS plus an HTTP redirect in the following phase.
+After the service stabilizes, follow the ALB health and controlled target-failure checks in [`load-balancing.md`](load-balancing.md). If DNS and HTTPS are enabled, follow [`dns-https.md`](dns-https.md) to prove certificate issuance, alias resolution, HTTP `301`, trusted HTTPS, health, and database readiness.

@@ -49,4 +49,13 @@ The ALB creates a continuous hourly charge plus Load Balancer Capacity Unit usag
 - Development deletion protection is disabled so the stack can be destroyed after evidence is captured.
 - Production deletion protection is enabled and must be deliberately disabled before destruction.
 - Access logs are deferred until the observability phase to avoid creating an unplanned S3 logging design.
-- HTTPS and Route 53 will add certificate/DNS design in the next phase; ACM public certificates themselves do not require replacing the ALB.
+- The HTTPS listener reuses the existing ALB rather than creating another load balancer.
+
+## DNS and certificates
+
+Public Route 53 hosted zones and DNS queries have charges, and domain registration or renewal is a separate cost. An ACM public certificate attached to the ALB has no additional certificate charge, but the ALB remains billable while deployed.
+
+- Development and production may share one hosted zone while using distinct records.
+- The module consumes an existing hosted zone, avoiding accidental duplicate-zone charges and broken delegation.
+- ACM validation CNAME records must remain present for managed renewal.
+- Destroying the environment removes its certificate and application records but does not destroy the shared hosted zone or registered domain.

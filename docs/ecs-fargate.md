@@ -225,7 +225,7 @@ The replacement task ARN must differ from `OLD_TASK`, and desired/running counts
 
 ## Deliberately deferred controls
 
-- ACM-backed HTTPS listener and HTTP redirect: next phase.
+- End-to-end TLS from the ALB to ECS: deliberately not required by the current threat model; public TLS terminates at the ALB.
 - Deployment circuit breaker and automatic rollback: rollback phase.
 - Service auto scaling: auto-scaling phase.
 - Container Insights dashboard and alarms: observability phase.

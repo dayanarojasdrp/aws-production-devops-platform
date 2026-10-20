@@ -31,3 +31,15 @@ Do not solve a startup failure by assigning a public IP, exposing port `8080` to
 9. Correct the cause, wait for service stability, and confirm target state returns to `healthy` before closing the incident.
 
 Do not register task IPs manually. ECS owns target registration and deregistration for the service.
+
+## DNS or HTTPS failure
+
+1. Confirm the application hostname resolves publicly with `dig` or `nslookup`.
+2. Confirm the Route 53 `A` alias targets the expected ALB DNS name and canonical zone ID.
+3. Confirm the ACM certificate is `ISSUED` in the same Region as the ALB.
+4. Confirm the certificate hostname matches the client hostname.
+5. Inspect the port `443` listener certificate and TLS policy.
+6. Test port `80` without following redirects and confirm it returns `301` with an HTTPS `Location`.
+7. Test HTTPS without `--insecure`; if TLS succeeds but the response is `503`, investigate target health rather than DNS.
+
+See [`dns-https.md`](dns-https.md) for commands and expected results.
