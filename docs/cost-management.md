@@ -40,3 +40,13 @@ Fargate charges for provisioned task CPU and memory while tasks run. CloudWatch 
 - Two production tasks trade higher steady cost for replica availability and rolling-deployment capacity.
 - Task sizing is an initial hypothesis; CloudWatch and load testing must justify later increases.
 - Fargate has no EC2 worker-management overhead, but predictable high-volume workloads may be cheaper on carefully managed EC2 capacity.
+
+## Application Load Balancer
+
+The ALB creates a continuous hourly charge plus Load Balancer Capacity Unit usage, even when development traffic is low. It cannot scale to zero.
+
+- One ALB is created per deployed environment to preserve environment isolation.
+- Development deletion protection is disabled so the stack can be destroyed after evidence is captured.
+- Production deletion protection is enabled and must be deliberately disabled before destruction.
+- Access logs are deferred until the observability phase to avoid creating an unplanned S3 logging design.
+- HTTPS and Route 53 will add certificate/DNS design in the next phase; ACM public certificates themselves do not require replacing the ALB.

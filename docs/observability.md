@@ -21,3 +21,7 @@ HTTP server started
 Failures before the HTTP listener starts produce `database startup check failed`; ECS service events and task stopped reasons must be inspected alongside CloudWatch logs.
 
 Container Insights, dashboards, metric filters, and alarms remain part of the dedicated observability phase. Basic log persistence is implemented now because ephemeral task files disappear when Fargate replaces a task.
+
+## ALB target health
+
+The target group continuously evaluates `GET /healthz` and exposes target states and reason codes through `aws elbv2 describe-target-health`. Standard ALB metrics such as request count, response time, HTTP 4xx/5xx, healthy hosts, and unhealthy hosts become available after deployment. Dashboards, alarms, and access-log storage remain deliberately deferred to the observability phase.

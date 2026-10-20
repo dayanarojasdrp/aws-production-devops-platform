@@ -48,7 +48,7 @@ ECS service on Fargate
           `------> CloudWatch Logs
 ```
 
-The service has no load balancer in this phase. Tasks cannot receive public traffic. The next phase will connect an ALB target group to container `api` on port `8080` and evaluate `GET /healthz`.
+The ECS service is connected to an ALB target group. ECS registers each private task IP and container port `8080`; the ALB evaluates `GET /healthz` before routing normal traffic to that target. Tasks still have no public IP and cannot receive direct internet traffic.
 
 ## Task definition contract
 
@@ -225,7 +225,7 @@ The replacement task ARN must differ from `OLD_TASK`, and desired/running counts
 
 ## Deliberately deferred controls
 
-- ALB target group and `/healthz` traffic checks: next phase.
+- ACM-backed HTTPS listener and HTTP redirect: next phase.
 - Deployment circuit breaker and automatic rollback: rollback phase.
 - Service auto scaling: auto-scaling phase.
 - Container Insights dashboard and alarms: observability phase.

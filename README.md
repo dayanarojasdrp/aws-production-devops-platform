@@ -2,7 +2,7 @@
 
 Production-oriented AWS platform using Go, Terraform, containers, and automated delivery workflows.
 
-The application runs locally with Go, PostgreSQL, and Docker Compose. Terraform defines the remote-state bootstrap, multi-AZ network, chained security groups, private RDS PostgreSQL tier, private ECR repositories, and the ECS Fargate application runtime.
+The application runs locally with Go, PostgreSQL, and Docker Compose. Terraform defines the remote-state bootstrap, multi-AZ network, chained security groups, private RDS PostgreSQL tier, private ECR repositories, ECS Fargate runtime, and public Application Load Balancer.
 
 ## Repository layout
 
@@ -37,3 +37,5 @@ The stateful tier uses private, encrypted RDS PostgreSQL with automated backups 
 Application images are stored in private ECR repositories with immutable Git SHA tags, scan-on-push, managed encryption, and count-based lifecycle cleanup. ECS consumes the repository URL, while the execution role scopes pull access to its ARN. See [`docs/container-registry.md`](docs/container-registry.md).
 
 ECS services run the exact Git SHA in private application subnets without public task IPs. The Fargate task definition injects database credentials from Secrets Manager, publishes structured application output to CloudWatch Logs, and uses separate execution and application IAM roles. See [`docs/ecs-fargate.md`](docs/ecs-fargate.md).
+
+An internet-facing Application Load Balancer provides the stable entry point across two public subnets. Its IP target group health-checks `/healthz`, while ECS automatically registers and deregisters private task IPs. HTTP is enabled only for this phase's validation; ACM, HTTPS, and Route 53 remain the next deliberate step. See [`docs/load-balancing.md`](docs/load-balancing.md).

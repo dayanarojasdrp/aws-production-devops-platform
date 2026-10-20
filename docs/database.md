@@ -68,14 +68,14 @@ Local: Docker Compose -> DB_HOST / DB_USER / DB_PASSWORD
 AWS:   ECS task definition + Secrets Manager -> same variables
 ```
 
-The future ECS task definition will receive the non-secret endpoint, port, and database name as normal environment variables. It will reference JSON keys in `credentials_secret_arn` for the username and password. The ECS execution role will receive `secretsmanager:GetSecretValue` only for that ARN.
+The ECS task definition receives the non-secret endpoint, port, and database name as normal environment variables. It references JSON keys in `credentials_secret_arn` for the username and password. The ECS execution role receives `secretsmanager:GetSecretValue` only for that ARN.
 
 The current credential is the RDS master credential used to bootstrap this small application and create its table. A separate least-privilege PostgreSQL application role is a valid future hardening step when versioned migrations or a dedicated database bootstrap job exists.
 
 ## Encryption
 
 - `storage_encrypted = true` protects database storage and snapshots at rest using the AWS-managed RDS key by default.
-- The application defaults `DB_SSLMODE` to `require`, enabling encrypted PostgreSQL transport for the future RDS connection.
+- The AWS task definition sets `DB_SSLMODE` to `require`, enabling encrypted PostgreSQL transport to RDS.
 - Full server identity verification with `verify-full` requires distributing the RDS CA bundle to the application image and remains a later hardening step.
 
 ## Development and production design

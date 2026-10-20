@@ -1,6 +1,6 @@
 # AWS network architecture
 
-Phase 5 creates the network boundaries for the future ALB, ECS service, and RDS database. It does not deploy those services yet.
+Phase 5 created the network boundaries now consumed by the ALB, ECS service, and RDS database. Each workload remains owned by its dedicated module.
 
 ## Traffic model
 
@@ -11,13 +11,13 @@ Internet
 Internet Gateway
    |
    v
-Public subnets (future ALB)
+Public subnets (internet-facing ALB)
    |
    v
-Private application subnets (future ECS tasks)
+Private application subnets (ECS tasks)
    |
    v
-Isolated database subnets (future RDS PostgreSQL)
+Isolated database subnets (RDS PostgreSQL)
 ```
 
 The intended rule is: Internet clients can reach the ALB; the ALB can reach ECS; ECS can reach RDS. Internet clients cannot directly reach ECS or RDS. The routing boundaries are implemented here, while the security groups enforcing the workload-to-workload chain are implemented in [`security.md`](security.md).
@@ -49,9 +49,9 @@ VPC CIDR   -> local
 
 The Internet Gateway route is what makes a subnet public. A resource inside it is not automatically internet-accessible: addressing, security groups, network ACLs, and resource configuration still matter.
 
-Automatic public IPv4 assignment is disabled even in this tier. The future internet-facing ALB manages its own public addresses; unrelated resources should not receive a public IP merely because they are launched in a public subnet.
+Automatic public IPv4 assignment is disabled even in this tier. The internet-facing ALB manages its own public addresses; unrelated resources should not receive a public IP merely because they are launched in a public subnet.
 
-The future internet-facing Application Load Balancer will use both public subnet IDs.
+The internet-facing Application Load Balancer uses both public subnet IDs.
 
 ### Private application subnets
 
@@ -62,7 +62,7 @@ VPC CIDR   -> local
 0.0.0.0/0 -> NAT Gateway
 ```
 
-This lets future ECS tasks initiate outbound connections for operations such as pulling images and sending logs. The NAT Gateway does not create an unsolicited inbound path from the Internet to ECS.
+This lets ECS tasks initiate outbound connections for operations such as pulling images and sending logs. The NAT Gateway does not create an unsolicited inbound path from the Internet to ECS.
 
 ### Isolated database subnets
 

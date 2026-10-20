@@ -124,7 +124,7 @@ aws ecr describe-images \
 docker pull "$REPOSITORY_URL:$IMAGE_TAG"
 ```
 
-The explicit platform must match the future ECS task definition. The planned default is `linux/amd64`; changing ECS to ARM64 would require changing the build platform as the same coordinated decision.
+The explicit platform matches the ECS task definition's Linux `X86_64` runtime. Changing ECS to ARM64 would require changing the build platform as the same coordinated decision.
 
 Validation evidence should demonstrate:
 

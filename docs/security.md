@@ -27,7 +27,7 @@ RDS Security Group
 | ALB SG | ECS SG | 8080 | Application traffic to Go API tasks |
 | ECS SG | RDS SG | 5432 | PostgreSQL traffic from the application |
 
-Only the ALB security group contains public inbound rules. ECS does not expose port 8080 to a public CIDR, and RDS does not expose port 5432 to a public CIDR. The port 80 rule permits traffic to the future ALB listener; the listener itself will be configured later to redirect requests to HTTPS rather than forward HTTP to the application.
+Only the ALB security group contains public inbound rules. ECS does not expose port 8080 to a public CIDR, and RDS does not expose port 5432 to a public CIDR. Port `80` currently reaches the ALB's temporary HTTP forwarding listener; the HTTPS phase will change that listener to a redirect rather than forward plaintext HTTP to the application.
 
 ## Why security-group references are used
 
@@ -49,21 +49,21 @@ Security groups are stateful. When an allowed request travels from the ALB to EC
 
 ## Outbound policy
 
-All three security groups currently declare unrestricted IPv4 egress explicitly. ECS tasks now require outbound access to ECR, CloudWatch Logs, Secrets Manager, RDS, and AWS APIs through the private-subnet NAT path.
+ALB egress is restricted to the ECS security group on TCP `8080`, which covers application traffic and target health checks. ECS tasks still require broader outbound access to ECR, CloudWatch Logs, Secrets Manager, RDS, and AWS APIs through the private-subnet NAT path. RDS retains its explicit managed-service egress rule pending later hardening.
 
-Inbound least privilege is enforced now. Egress can be narrowed after runtime traffic has been observed and the ECR, S3, CloudWatch Logs, and Secrets Manager VPC endpoint trade-offs have been evaluated. An explicit temporary rule is preferable to relying silently on AWS's default security-group egress behavior.
+Inbound least privilege and the known ALB backend path are enforced now. ECS egress can be narrowed after runtime traffic has been observed and the ECR, S3, CloudWatch Logs, and Secrets Manager VPC endpoint trade-offs have been evaluated. An explicit temporary rule is preferable to relying silently on AWS's default security-group egress behavior.
 
 ## Terraform ownership and contracts
 
 `terraform/modules/security` owns only the three security groups and their rules. It receives the VPC ID from the networking module and exports:
 
 ```text
-alb_security_group_id -> future ALB module
+alb_security_group_id -> internet-facing ALB
 ecs_security_group_id -> ECS Fargate task network interfaces
 rds_security_group_id -> private RDS module
 ```
 
-It does not create listeners, tasks, databases, subnets, routes, IAM permissions, or TLS certificates.
+It does not create listeners, tasks, databases, subnets, routes, IAM permissions, or TLS certificates. Those resources consume the security-group IDs through separate modules.
 
 ## Validation
 

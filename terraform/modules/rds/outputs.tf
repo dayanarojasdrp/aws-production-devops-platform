@@ -4,7 +4,7 @@ output "database_instance_id" {
 }
 
 output "database_endpoint" {
-  description = "Private RDS hostname for the future ECS task definition."
+  description = "Private RDS hostname consumed by the ECS task definition."
   value       = aws_db_instance.this.address
 }
 
@@ -24,7 +24,7 @@ output "database_subnet_group_name" {
 }
 
 output "credentials_secret_arn" {
-  description = "Secret ARN that the future ECS execution role may read."
+  description = "Secret ARN that the ECS execution role may read."
   value       = aws_secretsmanager_secret.database_credentials.arn
 }
 

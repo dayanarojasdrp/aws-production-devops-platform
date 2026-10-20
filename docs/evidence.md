@@ -49,3 +49,21 @@ Record this only after ECR contains the required SHA and the development environ
 | Replacement task exercise | Pending controlled stop test |
 
 Capture the original and replacement task ARNs, the service event that launches the replacement, and the corresponding CloudWatch startup logs. Never capture secret values, registry tokens, or environment-variable dumps.
+
+## Phase 10: Application Load Balancer
+
+Record this only after the ALB and ECS service have been applied with an image that exists in ECR.
+
+| Evidence | Value |
+| --- | --- |
+| ALB DNS name | Pending development deployment |
+| Public subnets / Availability Zones | Pending runtime inspection |
+| Listener `HTTP :80` | Pending development deployment |
+| Target type / port | Must be `ip` / `8080` |
+| Healthy targets | Pending stable service |
+| `GET /healthz` through ALB | Pending HTTP `200` validation |
+| `GET /readyz` through ALB | Pending database readiness validation |
+| Task stop and replacement | Pending controlled two-target exercise |
+| Requests during one-target failure | Pending continuous curl evidence |
+
+For failure evidence, capture the initial healthy targets, the stopped/draining target, the still-healthy target, the replacement task, and the final restored healthy count. A single development task can prove replacement but cannot prove uninterrupted availability; use two tasks for that claim.

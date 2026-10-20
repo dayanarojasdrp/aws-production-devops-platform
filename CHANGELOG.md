@@ -19,3 +19,4 @@ All notable changes to this project will be documented in this file.
 - Private encrypted RDS PostgreSQL module with generated Secrets Manager credentials and environment-specific recovery controls.
 - Private encrypted ECR repositories with immutable image tags, scan-on-push, and environment-specific lifecycle retention.
 - Private ECS Fargate services with SHA-pinned task definitions, desired-state reconciliation, scoped runtime IAM roles, Secrets Manager injection, and CloudWatch logging.
+- Multi-AZ Application Load Balancers with IP target groups, `/healthz` checks, connection draining, private ECS registration, and ALB-to-ECS egress restriction.

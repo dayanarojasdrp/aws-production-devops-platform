@@ -2,7 +2,7 @@
 
 ## Infrastructure provisioning
 
-The current Terraform configuration provisions networking, security groups, RDS PostgreSQL, its Secrets Manager credential, the private ECR repository, and the ECS Fargate application runtime. The ALB is intentionally not connected yet.
+The current Terraform configuration provisions networking, security groups, RDS PostgreSQL, its Secrets Manager credential, the private ECR repository, the ECS Fargate application runtime, and an internet-facing ALB connected to the ECS service.
 
 After the bootstrap and development backend are configured:
 
@@ -29,7 +29,13 @@ Review the plan before applying, especially:
 - a full Git SHA in `ecs_image_tag`, already present in ECR;
 - Fargate tasks placed only in private application subnets with no public IP;
 - execution-role access scoped to the repository, log group, and database secret;
-- expected dev/prod CPU, memory, desired count, and log retention.
+- expected dev/prod CPU, memory, desired count, and log retention;
+- an internet-facing ALB using both public subnets;
+- an `ip` target group forwarding to port `8080`;
+- `/healthz` matcher `200`, deliberate thresholds, and connection draining;
+- an ECS service load-balancer block using container `api` and the target group;
+- ALB egress restricted to the ECS security group on `8080`;
+- production ALB deletion protection enabled.
 
 After apply, use the non-sensitive outputs to record the endpoint, port, database name, and secret ARN. Do not print or copy the secret value into documentation.
 
@@ -38,3 +44,5 @@ Production deletion protection intentionally prevents a direct destroy. Removing
 After ECR exists, follow the controlled build, SHA tagging, push, pull, and immutability checks in [`container-registry.md`](container-registry.md). These manual checks produce evidence for this phase; GitHub Actions will automate the same artifact flow in a later CI/CD phase.
 
 For a new environment, follow the ECR-first bootstrap order and ECS runtime validation in [`ecs-fargate.md`](ecs-fargate.md). A normal full apply before the referenced image exists will cause the ECS service to fail steady-state validation because Fargate cannot pull a nonexistent tag.
+
+After the service stabilizes, follow the ALB health, HTTP, database readiness, and controlled target-failure checks in [`load-balancing.md`](load-balancing.md). HTTP exists only for Phase 10 validation and must be replaced by HTTPS plus an HTTP redirect in the following phase.
