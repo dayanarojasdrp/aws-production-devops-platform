@@ -72,6 +72,16 @@ variable "ecs_security_group_id" {
   }
 }
 
+variable "target_group_arn" {
+  description = "ARN of the ALB IP target group where ECS registers each task network interface."
+  type        = string
+
+  validation {
+    condition     = can(regex("^arn:[^:]+:elasticloadbalancing:[^:]+:[0-9]{12}:targetgroup/.+$", var.target_group_arn))
+    error_message = "target_group_arn must be an Elastic Load Balancing target group ARN."
+  }
+}
+
 variable "database_host" {
   description = "Private RDS hostname passed to the application as DB_HOST."
   type        = string
@@ -151,6 +161,17 @@ variable "desired_count" {
   validation {
     condition     = var.desired_count >= 1 && var.desired_count <= 20 && floor(var.desired_count) == var.desired_count
     error_message = "desired_count must be an integer between 1 and 20."
+  }
+}
+
+variable "health_check_grace_period_seconds" {
+  description = "Seconds ECS ignores load-balancer health failures while a new task starts."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.health_check_grace_period_seconds >= 0 && var.health_check_grace_period_seconds <= 300 && floor(var.health_check_grace_period_seconds) == var.health_check_grace_period_seconds
+    error_message = "health_check_grace_period_seconds must be an integer between 0 and 300."
   }
 }
 

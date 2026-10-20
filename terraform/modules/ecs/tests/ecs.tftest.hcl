@@ -34,6 +34,7 @@ variables {
   image_tag                       = "0123456789abcdef0123456789abcdef01234567"
   private_subnet_ids              = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1"]
   ecs_security_group_id           = "sg-0123456789abcdef0"
+  target_group_arn                = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/test-platform-dev-api/0123456789abcdef"
   database_host                   = "test-platform-dev.cluster-example.us-east-1.rds.amazonaws.com"
   database_port                   = 5432
   database_name                   = "platform"
@@ -119,9 +120,19 @@ run "development_service" {
       aws_ecs_service.application.launch_type == "FARGATE" &&
       aws_ecs_service.application.platform_version == "1.4.0" &&
       aws_ecs_service.application.availability_zone_rebalancing == "ENABLED" &&
+      aws_ecs_service.application.health_check_grace_period_seconds == 30 &&
       aws_ecs_service.application.wait_for_steady_state == true
     )
     error_message = "The service must continuously maintain the development task on Fargate."
+  }
+
+  assert {
+    condition = (
+      one(aws_ecs_service.application.load_balancer).target_group_arn == var.target_group_arn &&
+      one(aws_ecs_service.application.load_balancer).container_name == "api" &&
+      one(aws_ecs_service.application.load_balancer).container_port == 8080
+    )
+    error_message = "The service must register API task IPs and port 8080 with the supplied target group."
   }
 
   assert {
@@ -160,6 +171,7 @@ run "production_service" {
     ecr_repository_arn              = "arn:aws:ecr:us-east-1:123456789012:repository/test-platform-prod-api"
     database_host                   = "test-platform-prod.cluster-example.us-east-1.rds.amazonaws.com"
     database_credentials_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:test-platform-prod/database-credentials-AbCdEf"
+    target_group_arn                = "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/test-platform-prod-api/0123456789abcdef"
     task_cpu                        = 512
     task_memory                     = 1024
     desired_count                   = 2

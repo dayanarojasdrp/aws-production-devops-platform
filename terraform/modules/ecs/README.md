@@ -6,6 +6,7 @@ Creates the managed application runtime for one environment:
 - a versioned Fargate task definition for the exact immutable ECR Git SHA;
 - an ECS service that maintains the desired number of replicas;
 - private `awsvpc` networking with no public task IP;
+- automatic task-IP registration in the supplied ALB target group;
 - a CloudWatch log group for container stdout and stderr;
 - a least-privilege execution role and a permission-free application task role.
 
@@ -13,7 +14,7 @@ The execution role can retrieve an ECR authorization token, pull only from the s
 
 `DB_HOST`, `DB_PORT`, `DB_NAME`, and `DB_SSLMODE` are non-secret environment values. `DB_USER` and `DB_PASSWORD` reference the `username` and `password` JSON keys in Secrets Manager. Fargate platform `1.4.0` is explicit because JSON-key secret injection requires Linux platform 1.4.0 or later.
 
-The service currently has no load balancer block. The next phase will connect the public ALB target group to container `api` on port `8080` and use `/healthz` for traffic health. Until then, the tasks are intentionally unreachable from the internet.
+The service connects target group traffic to container `api` on port `8080`. ECS registers and deregisters each ephemeral task IP automatically, while the ALB decides whether that target is healthy enough to receive new traffic. A startup grace period prevents the service from reacting to ALB health failures while a new task is still initializing.
 
 The image must exist before the service is created. `image_tag` accepts only a full 40-character lowercase Git SHA and never defaults to `latest`. For an entirely new environment, create ECR first, push the image, and then apply the complete environment.
 

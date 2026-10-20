@@ -125,6 +125,13 @@ resource "aws_ecs_service" "application" {
   enable_execute_command             = false
   propagate_tags                     = "SERVICE"
   wait_for_steady_state              = true
+  health_check_grace_period_seconds  = var.health_check_grace_period_seconds
+
+  load_balancer {
+    target_group_arn = var.target_group_arn
+    container_name   = local.container_name
+    container_port   = var.container_port
+  }
 
   network_configuration {
     subnets          = var.private_subnet_ids
