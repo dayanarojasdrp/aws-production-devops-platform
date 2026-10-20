@@ -86,6 +86,37 @@ variable "alb_deletion_protection" {
   default     = false
 }
 
+variable "enable_https" {
+  description = "Create development DNS, ACM validation, HTTPS, and the HTTP redirect."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_https || (var.application_domain_name != null && var.route53_zone_id != null)
+    error_message = "application_domain_name and route53_zone_id are required when enable_https is true."
+  }
+}
+
+variable "application_domain_name" {
+  description = "Development API FQDN, normally a distinct hostname such as api-dev.example.com."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "route53_zone_id" {
+  description = "Existing public Route 53 hosted zone ID authoritative for the development API hostname."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "tls_security_policy" {
+  description = "TLS policy for the development ALB HTTPS listener."
+  type        = string
+  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+}
+
 variable "postgres_port" {
   description = "Port used from development ECS tasks to PostgreSQL."
   type        = number

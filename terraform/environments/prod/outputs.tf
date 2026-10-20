@@ -79,18 +79,38 @@ output "alb_arn" {
 }
 
 output "alb_dns_name" {
-  description = "Public production ALB DNS name used for Phase 10 HTTP validation."
+  description = "AWS-assigned public production ALB DNS name."
   value       = module.alb.alb_dns_name
 }
 
 output "alb_zone_id" {
-  description = "Production ALB canonical hosted zone ID for the future Route 53 alias."
+  description = "Production ALB canonical hosted zone ID used by its Route 53 alias."
   value       = module.alb.alb_zone_id
 }
 
 output "alb_http_listener_arn" {
   description = "Production HTTP listener ARN."
   value       = module.alb.http_listener_arn
+}
+
+output "alb_https_listener_arn" {
+  description = "Production HTTPS listener ARN, or null while HTTPS is disabled."
+  value       = module.alb.https_listener_arn
+}
+
+output "acm_certificate_arn" {
+  description = "Production ACM certificate ARN, or null while HTTPS is disabled."
+  value       = module.alb.certificate_arn
+}
+
+output "application_domain_name" {
+  description = "Production API hostname, or null while HTTPS is disabled."
+  value       = module.alb.application_domain_name
+}
+
+output "application_url" {
+  description = "Canonical production HTTPS URL, or null while HTTPS is disabled."
+  value       = module.alb.application_url
 }
 
 output "alb_target_group_arn" {

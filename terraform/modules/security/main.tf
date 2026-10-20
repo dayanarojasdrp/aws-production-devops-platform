@@ -38,7 +38,7 @@ resource "aws_vpc_security_group_ingress_rule" "alb_http" {
   for_each = var.alb_ingress_ipv4_cidrs
 
   security_group_id = aws_security_group.alb.id
-  description       = "Public HTTP entry point until the HTTPS redirect phase"
+  description       = "Public HTTP entry point redirected to HTTPS when TLS is enabled"
   cidr_ipv4         = each.value
   from_port         = 80
   to_port           = 80

@@ -16,6 +16,12 @@ alb_deregistration_delay_seconds = 30
 alb_deletion_protection           = false
 postgres_port                    = 5432
 
+# Keep false until a real domain is delegated to an existing public Route 53 zone.
+enable_https = false
+# application_domain_name = "api-dev.example.com"
+# route53_zone_id         = "Z0123456789ABCDEF"
+tls_security_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+
 database_name                        = "platform"
 database_master_username             = "appuser"
 database_engine_version              = "16"

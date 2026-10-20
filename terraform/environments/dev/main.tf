@@ -74,6 +74,10 @@ module "alb" {
   container_port               = var.application_port
   deregistration_delay_seconds = var.alb_deregistration_delay_seconds
   enable_deletion_protection   = var.alb_deletion_protection
+  enable_https                 = var.enable_https
+  application_domain_name      = var.application_domain_name
+  route53_zone_id              = var.route53_zone_id
+  tls_security_policy          = var.tls_security_policy
   tags                         = local.common_tags
 }
 
