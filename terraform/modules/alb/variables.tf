@@ -136,6 +136,61 @@ variable "enable_deletion_protection" {
   default     = false
 }
 
+variable "enable_https" {
+  description = "Create an ACM certificate, Route 53 records, HTTPS listener, and HTTP redirect."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = (
+      !var.enable_https ||
+      (var.application_domain_name != null && var.route53_zone_id != null)
+    )
+    error_message = "application_domain_name and route53_zone_id are required when enable_https is true."
+  }
+}
+
+variable "application_domain_name" {
+  description = "Public FQDN presented by the API certificate, such as api.example.com."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      var.application_domain_name == null ||
+      (
+        length(var.application_domain_name) <= 253 &&
+        can(regex("^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$", var.application_domain_name))
+      )
+    )
+    error_message = "application_domain_name must be null or a lowercase fully qualified domain name without a trailing dot."
+  }
+}
+
+variable "route53_zone_id" {
+  description = "ID of the existing public Route 53 hosted zone authoritative for the application domain."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.route53_zone_id == null || can(regex("^Z[A-Z0-9]+$", var.route53_zone_id))
+    error_message = "route53_zone_id must be null or look like a public Route 53 hosted zone ID."
+  }
+}
+
+variable "tls_security_policy" {
+  description = "TLS policy used by the ALB HTTPS listener."
+  type        = string
+  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+
+  validation {
+    condition     = startswith(var.tls_security_policy, "ELBSecurityPolicy-")
+    error_message = "tls_security_policy must be an AWS ALB security policy name."
+  }
+}
+
 variable "tags" {
   description = "Additional tags applied to ALB resources."
   type        = map(string)
