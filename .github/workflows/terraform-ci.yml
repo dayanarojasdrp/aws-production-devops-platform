@@ -1,0 +1,326 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+      - "Makefile"
+      - "scripts/terraform-static-checks.sh"
+      - ".tflint.hcl"
+      - ".trivyignore.yaml"
+      - ".github/workflows/terraform-ci.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to plan with temporary AWS credentials
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  changes:
+    name: Detect Terraform changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      terraform: ${{ steps.filter.outputs.terraform }}
+
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect relevant paths
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${EVENT_NAME}" != "pull_request" ]]; then
+            echo "terraform=true" >>"${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          set +e
+          git diff --quiet "${BASE_SHA}" "${HEAD_SHA}" -- \
+            terraform \
+            Makefile \
+            scripts/terraform-static-checks.sh \
+            .tflint.hcl \
+            .trivyignore.yaml \
+            .github/workflows/terraform-ci.yml
+          diff_status=$?
+          set -e
+
+          case "${diff_status}" in
+            0) echo "terraform=false" >>"${GITHUB_OUTPUT}" ;;
+            1) echo "terraform=true" >>"${GITHUB_OUTPUT}" ;;
+            *) exit "${diff_status}" ;;
+          esac
+
+  validate:
+    name: Format, validate, and test
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+
+      - name: Run static Terraform checks
+        run: ./scripts/terraform-static-checks.sh
+
+  lint:
+    name: TFLint
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up TFLint
+        uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
+        with:
+          tflint_version: v0.64.0
+          cache: true
+          tflint_config_path: .tflint.hcl
+
+      - name: Install pinned TFLint plugins
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tflint --init --config=.tflint.hcl
+
+      - name: Lint Terraform recursively
+        working-directory: terraform
+        run: tflint --recursive --config="${GITHUB_WORKSPACE}/.tflint.hcl" --format=compact
+
+  security:
+    name: IaC security scan
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Scan Terraform for high and critical misconfigurations
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.0
+          scan-type: config
+          scan-ref: terraform
+          format: table
+          exit-code: "1"
+          hide-progress: true
+          severity: HIGH,CRITICAL
+          trivyignores: .trivyignore.yaml
+
+  plan:
+    name: Authenticated plan (${{ inputs.environment }})
+    if: needs.changes.outputs.terraform == 'true' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs:
+      - changes
+      - validate
+      - lint
+      - security
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate plan configuration
+        shell: bash
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_TERRAFORM_ROLE_ARN: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          ECS_IMAGE_TAG: ${{ vars.ECS_IMAGE_TAG }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for variable in AWS_ACCOUNT_ID AWS_REGION AWS_TERRAFORM_ROLE_ARN ECS_IMAGE_TAG TF_STATE_BUCKET; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "::error::Repository variable ${variable} is not configured."
+              missing=1
+            fi
+          done
+          if [[ -n "${ECS_IMAGE_TAG:-}" && ! "${ECS_IMAGE_TAG}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::ECS_IMAGE_TAG must be a full lowercase 40-character Git SHA."
+            missing=1
+          fi
+          exit "${missing}"
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+
+      - name: Configure temporary AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: terraform-plan-${{ github.run_id }}
+          role-duration-seconds: 1800
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          unset-current-credentials: true
+
+      - name: Initialize selected remote state
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          terraform -chdir="terraform/environments/${{ inputs.environment }}" init \
+            -input=false \
+            -reconfigure \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="region=${AWS_REGION}"
+
+      - name: Create speculative plan without apply
+        shell: bash
+        env:
+          ECS_IMAGE_TAG: ${{ vars.ECS_IMAGE_TAG }}
+        run: |
+          set -euo pipefail
+          set +e
+          terraform -chdir="terraform/environments/${{ inputs.environment }}" plan \
+            -input=false \
+            -lock-timeout=5m \
+            -refresh=false \
+            -detailed-exitcode \
+            -var="ecs_image_tag=${ECS_IMAGE_TAG}" \
+            -out=ci.tfplan
+          plan_status=$?
+          set -e
+
+          case "${plan_status}" in
+            0)
+              result="No infrastructure changes"
+              ;;
+            2)
+              result="Infrastructure changes require review"
+              ;;
+            *)
+              echo "::error::Terraform plan failed with exit code ${plan_status}."
+              exit "${plan_status}"
+              ;;
+          esac
+
+          {
+            echo "## Terraform plan completed"
+            echo
+            echo "- Environment: \`${{ inputs.environment }}\`"
+            echo "- Result: ${result}"
+            echo "- Authentication: GitHub OIDC → AWS STS"
+            echo "- Apply executed: **No**"
+            echo "- Refresh executed: **No**"
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+  gate:
+    name: Terraform CI gate
+    if: always()
+    needs:
+      - changes
+      - validate
+      - lint
+      - security
+      - plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Require all relevant Terraform checks
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          TERRAFORM_CHANGED: ${{ needs.changes.outputs.terraform }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${CHANGES_RESULT}" != "success" ]]; then
+            echo "::error::Terraform path detection failed."
+            exit 1
+          fi
+
+          if [[ "${TERRAFORM_CHANGED}" != "true" ]]; then
+            echo "No Terraform paths changed; expensive Terraform jobs were skipped."
+            exit 0
+          fi
+
+          for result in "${VALIDATE_RESULT}" "${LINT_RESULT}" "${SECURITY_RESULT}"; do
+            if [[ "${result}" != "success" ]]; then
+              echo "::error::A required Terraform check ended with status ${result}."
+              exit 1
+            fi
+          done
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if [[ "${GIT_REF}" != "refs/heads/main" ]]; then
+              echo "::error::Authenticated plans may be launched only from main."
+              exit 1
+            fi
+            if [[ "${PLAN_RESULT}" != "success" ]]; then
+              echo "::error::The authenticated Terraform plan ended with status ${PLAN_RESULT}."
+              exit 1
+            fi
+          fi
+
+          echo "All required Terraform checks passed."

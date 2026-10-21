@@ -1,4 +1,4 @@
-.PHONY: up down logs fmt validate smoke-test load-test bootstrap-init bootstrap-validate bootstrap-plan network-test security-test rds-test ecr-test alb-test ecs-test
+.PHONY: up down logs fmt validate app-test terraform-check smoke-test load-test bootstrap-init bootstrap-validate bootstrap-plan network-test security-test rds-test ecr-test alb-test ecs-test
 
 up:
 	docker compose up --build -d
@@ -14,6 +14,12 @@ fmt:
 
 validate:
 	./scripts/validate.sh
+
+app-test:
+	docker run --rm --volume "$(CURDIR)/app:/src" --workdir /src golang:1.27.3-alpine sh -c 'go mod verify && test -z "$$(gofmt -l .)" && go vet ./... && go test ./...'
+
+terraform-check:
+	./scripts/terraform-static-checks.sh
 
 smoke-test:
 	./scripts/smoke-test.sh

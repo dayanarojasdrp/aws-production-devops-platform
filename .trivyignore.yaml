@@ -1,0 +1,34 @@
+misconfigurations:
+  - id: AVD-AWS-0132
+    paths:
+      - "bootstrap/main.tf"
+    statement: >-
+      The versioned, access-blocked state bucket is encrypted with AWS-managed
+      SSE-S3 during bootstrap. A customer-managed KMS key is deferred to the
+      IAM hardening phase so its key policy can be designed with the final roles.
+    expired_at: 2027-04-20
+
+  - id: AVD-AWS-0053
+    paths:
+      - "modules/alb/main.tf"
+    statement: >-
+      This ALB is intentionally internet-facing and is the platform's only
+      public ingress tier; ECS and RDS remain in private subnets.
+    expired_at: 2027-04-20
+
+  - id: AVD-AWS-0054
+    paths:
+      - "modules/alb/main.tf"
+    statement: >-
+      Port 80 is intentional: it redirects to HTTPS when TLS is enabled and
+      supports the documented domainless development bootstrap before ACM.
+    expired_at: 2027-04-20
+
+  - id: AVD-AWS-0104
+    paths:
+      - "modules/security/main.tf"
+    statement: >-
+      ECS currently needs NAT egress for ECR, CloudWatch Logs, Secrets Manager,
+      and AWS APIs; managed-service egress is documented for later hardening.
+      Public ingress to ECS and RDS remains prohibited by SG chaining.
+    expired_at: 2027-04-20
