@@ -1,0 +1,212 @@
+name: Application CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "Makefile"
+      - "scripts/validate.sh"
+      - ".golangci.yml"
+      - ".github/workflows/app-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: application-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect application changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      application: ${{ steps.filter.outputs.application }}
+
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect relevant paths
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${EVENT_NAME}" != "pull_request" ]]; then
+            echo "application=true" >>"${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          set +e
+          git diff --quiet "${BASE_SHA}" "${HEAD_SHA}" -- \
+            app \
+            Makefile \
+            scripts/validate.sh \
+            .golangci.yml \
+            .github/workflows/app-ci.yml
+          diff_status=$?
+          set -e
+
+          case "${diff_status}" in
+            0) echo "application=false" >>"${GITHUB_OUTPUT}" ;;
+            1) echo "application=true" >>"${GITHUB_OUTPUT}" ;;
+            *) exit "${diff_status}" ;;
+          esac
+
+  test:
+    name: Test and vet
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: app/go.mod
+          cache: true
+          cache-dependency-path: app/go.sum
+
+      - name: Verify dependencies
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Check Go formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l .)"
+          if [[ -n "${unformatted}" ]]; then
+            echo "::error::The following Go files require gofmt:"
+            echo "${unformatted}"
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run unit tests with race detection
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+  lint:
+    name: Lint
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: app/go.mod
+          cache: true
+          cache-dependency-path: app/go.sum
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          working-directory: app
+          args: --config=../.golangci.yml --timeout=5m
+
+  container:
+    name: Build and scan container
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build pull-request image
+        env:
+          IMAGE_TAG: users-api:ci-${{ github.sha }}
+        run: docker build --tag "${IMAGE_TAG}" app
+
+      - name: Scan image for high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.0
+          image-ref: users-api:ci-${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+  gate:
+    name: Application CI gate
+    if: always()
+    needs:
+      - changes
+      - test
+      - lint
+      - container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Require all relevant application checks
+        shell: bash
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          APPLICATION_CHANGED: ${{ needs.changes.outputs.application }}
+          TEST_RESULT: ${{ needs.test.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          CONTAINER_RESULT: ${{ needs.container.result }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${CHANGES_RESULT}" != "success" ]]; then
+            echo "::error::Application path detection failed."
+            exit 1
+          fi
+
+          if [[ "${APPLICATION_CHANGED}" != "true" ]]; then
+            echo "No application paths changed; expensive application jobs were skipped."
+            exit 0
+          fi
+
+          for result in "${TEST_RESULT}" "${LINT_RESULT}" "${CONTAINER_RESULT}"; do
+            if [[ "${result}" != "success" ]]; then
+              echo "::error::A required application check ended with status ${result}."
+              exit 1
+            fi
+          done
+
+          echo "All required application checks passed."
