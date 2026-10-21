@@ -21,3 +21,10 @@ All notable changes to this project will be documented in this file.
 - Private ECS Fargate services with SHA-pinned task definitions, desired-state reconciliation, scoped runtime IAM roles, Secrets Manager injection, and CloudWatch logging.
 - Multi-AZ Application Load Balancers with IP target groups, `/healthz` checks, connection draining, private ECS registration, and ALB-to-ECS egress restriction.
 - Optional Route 53 application aliases, DNS-validated ACM certificates, HTTPS listeners, modern TLS policy, and permanent HTTP-to-HTTPS redirects.
+- Application CI with dependency verification, formatting, vet, race-enabled tests, golangci-lint, Docker builds, and Trivy image scanning.
+- Terraform CI with backend-free validation, mocked module tests, TFLint, Trivy IaC scanning, stable branch-protection gates, and a manual OIDC-authenticated speculative plan.
+- Reviewed and expiring Trivy exceptions for intentional platform design trade-offs.
+
+### Changed
+
+- Upgraded the application build baseline to Go 1.27.3 and patched PostgreSQL/Go module dependencies after container scanning identified fixed high and critical vulnerabilities.

@@ -83,6 +83,17 @@ Create these non-secret repository variables:
 | `AWS_REGION` | `terraform output aws_region` | `us-east-1` |
 | `AWS_TERRAFORM_ROLE_ARN` | `terraform output github_terraform_role_arn` | `arn:aws:iam::123456789012:role/aws-production-devops-platform-github-terraform` |
 
+The manual Terraform CI plan also needs two repository variables:
+
+| Variable | Source | Purpose |
+| --- | --- | --- |
+| `TF_STATE_BUCKET` | `terraform output -raw state_bucket_name` | Completes the partial S3 backend configuration |
+| `ECS_IMAGE_TAG` | Existing ECR image tag | Must be a full lowercase 40-character Git SHA |
+
+These are configuration identifiers, not credentials. The plan runs only from
+`main`, requests temporary credentials through the same OIDC trust boundary,
+and never executes `terraform apply`.
+
 An IAM role ARN and AWS account ID are identifiers, not passwords. They can be repository variables. Do not create repository secrets containing permanent AWS access keys.
 
 ## Run the proof

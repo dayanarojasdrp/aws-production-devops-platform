@@ -88,3 +88,22 @@ See [`database.md`](database.md) for private placement, encryption, state handli
 The task execution role is used by the ECS agent and is limited to the exact ECR repository, CloudWatch log group, and database secret required to start the task. `ecr:GetAuthorizationToken` is the one unavoidable wildcard because that API does not support repository-level resource scoping.
 
 The application task role has no AWS API permissions. Pulling the image, injecting task-definition secrets, and publishing `awslogs` output do not justify granting permissions to application code.
+
+## CI supply-chain and security controls
+
+Pull-request workflows use read-only repository permissions by default. Only
+the manual Terraform plan job can request an OIDC token, and the current trust
+policy limits that identity to `main`. Reusable Actions are pinned to full
+commit SHAs so a mutable tag cannot silently replace reviewed workflow code.
+
+Application CI scans the built runtime image for fixed `HIGH` and `CRITICAL`
+operating-system and library vulnerabilities. Terraform CI scans IaC at the same
+severity threshold and runs TFLint with a pinned AWS ruleset.
+
+Accepted Trivy findings live in `.trivyignore.yaml`; they are scoped by path,
+contain a rationale, and expire on 2027-04-20. Expiration is deliberate: public
+ALB placement, temporary HTTP bootstrap behavior, broad managed-service egress,
+and SSE-S3 state encryption must be reconsidered during the final security and
+IAM hardening phases rather than becoming permanent invisible exceptions.
+
+See [`cicd.md`](cicd.md) for job behavior and branch-protection guidance.

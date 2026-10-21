@@ -85,3 +85,28 @@ Record this only after a real domain is delegated, HTTPS is enabled, and the env
 | Certificate verification | Must succeed without `--insecure` |
 
 Capture the redirect with its `Location`, the trusted HTTPS response, and enough AWS metadata to connect the hostname, certificate, listener, and ALB. Do not capture credentials, tokens, certificate private material, or database secrets.
+
+## Phase 12: Pull-request continuous integration
+
+Record this after the workflows have been pushed and exercised through a pull
+request. Local validation alone is not evidence that GitHub branch protection
+is enforcing the checks.
+
+| Evidence | Value |
+| --- | --- |
+| Pull request URL | Pending first CI pull request |
+| Source commit SHA | Pending first CI pull request |
+| Application CI gate | Pending workflow run |
+| Terraform CI gate | Pending workflow run |
+| Go race-enabled tests | Pending workflow run |
+| Container Trivy result | Local validation: 0 `HIGH`/`CRITICAL`; GitHub run pending |
+| Terraform module tests | Local validation: 12 passed; GitHub run pending |
+| TFLint result | Local validation: passed; GitHub run pending |
+| Terraform Trivy result | Local validation: passed with reviewed, expiring exceptions; GitHub run pending |
+| Failed-check exercise | Pending controlled pull-request test |
+| Branch protection | Pending repository rule configuration |
+| Image pushed or service deployed | No |
+
+Capture one failed run and its corrected rerun. The screenshot or link should
+show the check name, commit SHA, failure reason, and final result; never include
+OIDC tokens, temporary AWS credentials, Terraform plan files, or secret values.

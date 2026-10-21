@@ -1,5 +1,16 @@
 # Deployment
 
+## CI does not deploy
+
+The pull-request workflows in this repository validate proposed changes. They
+do not push images to ECR, update ECS, or apply Terraform. The only AWS-aware CI
+operation is a manual, `main`-only speculative Terraform plan authenticated by
+OIDC; it uses `-refresh=false` and must not be reused as an apply artifact.
+
+A later CD phase will define artifact publication and deployment permissions.
+Until then, infrastructure apply remains an explicit, reviewed operator action.
+See [`cicd.md`](cicd.md) for the complete boundary.
+
 ## Infrastructure provisioning
 
 The current Terraform configuration provisions networking, security groups, RDS PostgreSQL, its Secrets Manager credential, the private ECR repository, the ECS Fargate application runtime, and an internet-facing ALB connected to the ECS service. With a real domain and public hosted zone, it also provisions the Route 53 alias, DNS-validated ACM certificate, HTTPS listener, and HTTP redirect.
