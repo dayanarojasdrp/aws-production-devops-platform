@@ -7,5 +7,5 @@ docker compose config --quiet
 docker run --rm \
   --volume "$(pwd)/app:/src" \
   --workdir /src \
-  golang:1.24-alpine \
+  golang:1.27.3-alpine \
   sh -c 'test -z "$(gofmt -l .)" && go test ./...'
