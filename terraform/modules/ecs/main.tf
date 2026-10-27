@@ -127,6 +127,11 @@ resource "aws_ecs_service" "application" {
   wait_for_steady_state              = true
   health_check_grace_period_seconds  = var.health_check_grace_period_seconds
 
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   load_balancer {
     target_group_arn = var.target_group_arn
     container_name   = local.container_name
@@ -140,6 +145,10 @@ resource "aws_ecs_service" "application" {
   }
 
   lifecycle {
+    # Application CD owns the active revision after the service is created.
+    # Terraform still creates the configuration baseline consumed by CD.
+    ignore_changes = [task_definition]
+
     precondition {
       condition     = var.deployment_minimum_healthy_percent <= var.deployment_maximum_percent
       error_message = "deployment_minimum_healthy_percent cannot exceed deployment_maximum_percent."

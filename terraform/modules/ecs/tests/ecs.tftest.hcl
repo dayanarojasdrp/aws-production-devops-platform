@@ -121,9 +121,11 @@ run "development_service" {
       aws_ecs_service.application.platform_version == "1.4.0" &&
       aws_ecs_service.application.availability_zone_rebalancing == "ENABLED" &&
       aws_ecs_service.application.health_check_grace_period_seconds == 30 &&
-      aws_ecs_service.application.wait_for_steady_state == true
+      aws_ecs_service.application.wait_for_steady_state == true &&
+      aws_ecs_service.application.deployment_circuit_breaker[0].enable == true &&
+      aws_ecs_service.application.deployment_circuit_breaker[0].rollback == true
     )
-    error_message = "The service must continuously maintain the development task on Fargate."
+    error_message = "The service must continuously maintain the development task on Fargate and enable automatic rollback on failed deployments."
   }
 
   assert {
