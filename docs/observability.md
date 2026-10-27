@@ -175,3 +175,70 @@ This is the best place to show both a visual summary and active operational aler
 ### Why this matters for interviews
 
 This phase demonstrates operational maturity. It shows you understand that production systems are not just deployed—they are monitored, alerted, and diagnosable. A strong candidate can connect the metrics to the runtime stack and explain what each signal means before reacting.
+
+## Phase 17 — Operational alerts
+
+This is the operations phase after the platform is deployed and monitored. The goal is not only to know that the service exists, but to detect failure automatically and route actionable information to the right owners before the blast radius grows.
+
+### Event-driven alerting path
+
+When an ECS deployment fails, the system should emit a cloud event and fan that signal into an operational notification flow:
+
+```text
+ECS deployment failure
+      |
+      v
+EventBridge rule
+      |
+      v
+SNS topic
+      |
+      v
+email / chat / incident notification
+```
+
+The relevant AWS event is the ECS deployment failure signal, especially `SERVICE_DEPLOYMENT_FAILED` when the deployment circuit breaker is enabled. This is valuable because it catches the operational condition at the service level, not only in a dashboard or a user report.
+
+### Why this matters
+
+A deployment that stays healthy until the final two minutes is still a deployment problem, not just a build problem. Operating teams need a signal at the moment the service transitions into a failed state so they can:
+
+- confirm the failed revision;
+- inspect ECS events;
+- read CloudWatch logs;
+- decide whether rollback is already in progress;
+- escalate if the service remains unhealthy.
+
+### EventBridge rule design
+
+The alarm route should filter on ECS service events such as:
+
+```text
+detail-type: ECS Deployment Event
+source: aws.ecs
+detail:
+  eventName: SERVICE_DEPLOYMENT_FAILED
+```
+
+The rule then publishes to an SNS topic:
+
+```text
+EventBridge -> SNS -> email / Slack / PagerDuty / incident channel
+```
+
+This creates a clear flow from infrastructure event to human notification without relying on someone to manually check the console.
+
+### Operational evidence
+
+A good evidence package for this phase includes:
+
+- an ECS event showing the failing deployment;
+- the EventBridge rule matching the service event;
+- the SNS subscription delivery path;
+- confirmation that the alert is triggered by the same condition that caused rollback.
+
+This demonstrates real operations discipline: not only deployment automation, but automated detection and response.
+
+### Interview narrative
+
+This phase proves you understand the difference between shipping code and operating a system. Successful candidates can explain how a runtime failure is translated into a signal, routed to the right audience, and used to reduce MTTR without relying on manual polling.
