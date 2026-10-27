@@ -89,6 +89,96 @@ The task execution role is used by the ECS agent and is limited to the exact ECR
 
 The application task role has no AWS API permissions. Pulling the image, injecting task-definition secrets, and publishing `awslogs` output do not justify granting permissions to application code.
 
+## FASE 19 — IAM least privilege
+
+This phase enforces the principle that AWS identities are purpose-bound and permission-scoped. A production platform should not grant broad wildcard access simply because it is convenient. Every identity gets only the actions necessary to complete its own job.
+
+### Identity split
+
+The project separates the platform identities into dedicated roles rather than using a single high-privilege identity:
+
+- GitHub Terraform Role
+  - assumes AWS access from GitHub OIDC for Terraform state and plan operations;
+  - can read and write only the required backend state paths and lock files;
+  - cannot deploy workloads, push images, or administer the account.
+
+- GitHub Deployment Role
+  - assumes AWS access from GitHub Environment OIDC for application delivery;
+  - can publish images to the target ECR repository only;
+  - can update only the matching ECS service;
+  - can pass only the exact ECS execution and task roles to `ecs-tasks.amazonaws.com`.
+
+- ECS Execution Role
+  - allows the ECS agent to pull the image from ECR;
+  - can write to the specific CloudWatch log group for the service;
+  - can read only the database secret required by the task;
+  - supports runtime startup and log delivery without granting application-level AWS access.
+
+- ECS Task Role
+  - exposes the service identity to the runtime container;
+  - intentionally holds almost no permissions because the Go API does not call AWS APIs;
+  - this is the correct architecture when the task does not need AWS SDK access.
+
+### Why this matters
+
+The main goal is to remove the temptation to grant `AdministratorAccess` or a broad `PowerUser` policy because it is faster to set up. That approach hides real runtime risk and makes security reviews harder.
+
+The platform keeps an explicit separation between:
+
+1. infrastructure management identity;
+2. deployment identity;
+3. runtime executor identity;
+4. application identity.
+
+This is not just about meeting a checklist; it reduces blast radius, forces clearer boundaries, and makes incident response faster.
+
+### Least-privilege policy shape
+
+The execution role is intentionally narrow:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GetEcrAuthorizationToken",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "PullApplicationImage",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+      ],
+      "Resource": "arn:aws:ecr:REGION:ACCOUNT_ID:repository/PROJECT-api"
+    },
+    {
+      "Sid": "WriteApplicationLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:log-group:PROJECT-api:log-stream:*"
+    },
+    {
+      "Sid": "ReadApplicationSecret",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:PROJECT-db-credentials-*"
+    }
+  ]
+}
+```
+
+The application task role is even more constrained: no AWS API policy unless the application begins to call a real AWS service, such as S3, Secrets Manager, or SQS. In that case, permissions should be added one service at a time and only at the exact resource scope required.
+
+This is the correct design principle: do not grant permissions because they may be useful later; add them only when the runtime contract proves they are required.
+
 ## CI supply-chain and security controls
 
 Pull-request workflows use read-only repository permissions by default. Only
