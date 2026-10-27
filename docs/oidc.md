@@ -96,6 +96,27 @@ and never executes `terraform apply`.
 
 An IAM role ARN and AWS account ID are identifiers, not passwords. They can be repository variables. Do not create repository secrets containing permanent AWS access keys.
 
+## Deployment roles and GitHub Environments
+
+Application delivery does not reuse `AWS_TERRAFORM_ROLE_ARN`. The bootstrap creates two additional roles:
+
+```sh
+terraform -chdir=terraform/bootstrap output github_deployment_role_arns
+terraform -chdir=terraform/bootstrap output github_deployment_oidc_subjects
+```
+
+The `dev` role trusts only the `development` GitHub Environment subject, and the `prod` role trusts only `production`. When a job declares a GitHub Environment, that environment replaces the branch stanza in the OIDC `sub` claim. The deployment workflow still rejects any Git ref other than `refs/heads/main` before requesting AWS credentials.
+
+This produces three independent trust boundaries:
+
+| Role | Trusted workflow context | AWS responsibility |
+| --- | --- | --- |
+| Terraform | Repository `main` branch | Terraform state access and planning |
+| Deploy dev | `development` GitHub Environment | Dev ECR artifact and dev ECS service |
+| Deploy prod | `production` GitHub Environment | Prod ECR artifact and prod ECS service |
+
+Configure the environment-specific variables described in [`deployment.md`](deployment.md). Both Environments must restrict deployment branches to `main`; production should additionally require a reviewer and prevent self-review. No environment needs `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY`.
+
 ## Run the proof
 
 After the workflow exists on `main`, open:

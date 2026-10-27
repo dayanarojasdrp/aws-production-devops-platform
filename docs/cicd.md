@@ -1,14 +1,15 @@
 # Continuous integration
 
-Phase 12 adds pull-request quality gates. It does not publish an image, modify
-AWS, update ECS, or run `terraform apply`.
+Phase 12 adds pull-request quality gates. Phase 13 adds controlled application
+delivery after those gates and review have allowed a commit to reach `main`.
+Neither workflow runs `terraform apply`.
 
 ## CI and CD are different controls
 
 | Control | Question answered | This phase |
 | --- | --- | --- |
 | Continuous Integration (CI) | Is this proposed code safe and internally consistent enough to merge? | Implemented |
-| Continuous Delivery/Deployment (CD) | Which approved artifact should be released, and how is it promoted and rolled back? | Deliberately deferred |
+| Continuous Delivery/Deployment (CD) | Which approved artifact should be released, and how is it promoted? | Implemented for ECS application revisions |
 
 The CI workflows are therefore allowed to test, compile, lint, scan, and create
 a speculative plan. They are not allowed to push to ECR, register an ECS task
@@ -23,11 +24,13 @@ Pull request
     +-- Terraform paths changed? --- yes --> fmt + validate + tests + lint + scan
                                    \-- no  --> jobs skipped, gate reports success
 
-Approved merge to main
+Approved application merge to main
     |
-    +-- CI runs again for the affected area
+    +-- CI runs again
     |
-    +-- no deployment in Phase 12
+    +-- CD retests the exact SHA
+    |
+    +-- development deployment
 ```
 
 ## Application workflow
@@ -219,3 +222,35 @@ merging:
 
 The useful evidence is the transition from failed check, through diagnosis and
 fix, to a green gate—not merely a screenshot of a green tick.
+
+## Application deployment workflow
+
+`.github/workflows/deploy.yml` begins only after code is on `main`. Application
+changes deploy automatically to the `development` GitHub Environment. Manual
+runs from `main` can choose `development` or `production`; production can pause
+at the Environment gate for a required reviewer.
+
+```text
+main SHA
+  -> tests
+  -> environment-scoped OIDC role
+  -> build or reuse SHA-tagged image
+  -> Trivy scan
+  -> ECR push
+  -> task-definition revision
+  -> ECS rolling update
+  -> wait for stability
+  -> read-only smoke test
+```
+
+The ECR tag is the complete commit SHA and the repository rejects tag mutation.
+A rerun therefore checks whether the artifact already exists: existing artifacts
+are pulled and rescanned; missing artifacts are built, scanned, and pushed. The
+workflow records the ECR digest so source SHA, image, and running revision can be
+correlated without relying on `latest`.
+
+CI asks whether a change may merge. CD operates only on the commit that actually
+merged and has separate AWS permissions. The deployment role cannot read or
+write Terraform state, and the Terraform role cannot push ECR images or update
+ECS. See [`deployment.md`](deployment.md) for setup, ownership, failure boundaries,
+and AWS validation.

@@ -24,7 +24,7 @@ Use `make logs` to follow the containers and `make down` to stop them. See [`app
 
 ## AWS bootstrap
 
-The first AWS phase creates the protected Terraform state bucket and a Terraform-specific GitHub Actions OIDC role; it does not deploy application infrastructure. This identity is intentionally separate from the future application-deployment and ECS runtime roles. Follow [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md) before initializing the development or production Terraform environments.
+The AWS bootstrap creates the protected Terraform state bucket, a Terraform-specific GitHub Actions OIDC role, and isolated development/production deployment roles. None uses permanent AWS keys, and the deployment identities remain separate from Terraform and ECS runtime roles. Follow [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md) before initializing the development or production Terraform environments.
 
 After applying the bootstrap, follow [`docs/oidc.md`](docs/oidc.md) to configure and run the GitHub Actions proof of temporary AWS authentication.
 
@@ -41,3 +41,5 @@ ECS services run the exact Git SHA in private application subnets without public
 An internet-facing Application Load Balancer provides the stable entry point across two public subnets. Its IP target group health-checks `/healthz`, while ECS automatically registers and deregisters private task IPs. When a real domain is configured, Route 53 aliases the hostname to the ALB, ACM supplies a DNS-validated certificate, port `443` terminates TLS, and port `80` redirects permanently to HTTPS. See [`docs/load-balancing.md`](docs/load-balancing.md) and [`docs/dns-https.md`](docs/dns-https.md).
 
 Pull requests are protected by separate application and Terraform CI workflows. The application pipeline verifies dependencies, formatting, vet, race-enabled tests, lint, the Docker build, and image vulnerabilities. The Terraform pipeline verifies formatting, initialization without a backend, validation, mocked module tests, TFLint, and IaC security; a manual `main`-only speculative plan can authenticate through OIDC but never applies changes. See [`docs/cicd.md`](docs/cicd.md).
+
+Approved application commits merged into `main` are automatically deployed to development. The CD workflow retests the exact commit, assumes an environment-specific role through OIDC, builds or reuses the immutable SHA-tagged artifact, scans and pushes it to ECR, registers a new task-definition revision, waits for the ECS rolling deployment to stabilize, and executes read-only health and readiness smoke tests. Production is manual and can require a GitHub Environment reviewer. See [`docs/deployment.md`](docs/deployment.md).

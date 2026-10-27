@@ -143,6 +143,11 @@ output "ecs_task_definition_arn" {
   value       = module.ecs.task_definition_arn
 }
 
+output "ecs_task_definition_family" {
+  description = "Production task definition family used as the deployment configuration baseline."
+  value       = module.ecs.task_definition_family
+}
+
 output "ecs_execution_role_arn" {
   description = "Production role used by ECS to prepare and start tasks."
   value       = module.ecs.execution_role_arn

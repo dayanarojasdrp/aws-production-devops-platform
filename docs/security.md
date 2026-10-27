@@ -106,4 +106,10 @@ ALB placement, temporary HTTP bootstrap behavior, broad managed-service egress,
 and SSE-S3 state encryption must be reconsidered during the final security and
 IAM hardening phases rather than becoming permanent invisible exceptions.
 
+## Deployment identity boundaries
+
+Application delivery uses two environment-specific OIDC roles rather than the Terraform role. Development and production trust different GitHub Environment subjects. Each role can publish only to its matching ECR repository, update only its matching ECS service, read only its task-definition family, and pass only the exact ECS execution and task roles with `iam:PassedToService = ecs-tasks.amazonaws.com`.
+
+`ecs:RegisterTaskDefinition` is the deliberate wildcard: AWS authorizes registration before the new revision ARN exists. That wildcard does not let the workflow deploy arbitrary account roles because `iam:PassRole` is limited to two named roles, and it does not let the workflow update another service because `ecs:UpdateService` is limited to one service ARN.
+
 See [`cicd.md`](cicd.md) for job behavior and branch-protection guidance.

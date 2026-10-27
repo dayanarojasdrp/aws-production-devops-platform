@@ -11,6 +11,11 @@ github_branch     = "main"
 github_owner_id      = "168503064"
 github_repository_id = "1388204996"
 
+github_deployment_environments = {
+  development = "development"
+  production  = "production"
+}
+
 tags = {
   Environment = "shared"
   Owner       = "dayanarojasdrp"

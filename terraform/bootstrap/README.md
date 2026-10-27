@@ -5,7 +5,8 @@ This root module creates only the foundations required before the main AWS platf
 1. a protected S3 bucket for remote Terraform state;
 2. the GitHub Actions OIDC identity provider in AWS IAM;
 3. a branch- and repository-restricted IAM role for GitHub Terraform workflows;
-4. least-privilege access from that role to the `dev` and `prod` state objects and lock files.
+4. least-privilege access from that role to the `dev` and `prod` state objects and lock files;
+5. separate GitHub Environment-restricted deployment roles for development and production.
 
 It deliberately does not create the VPC, ECS, ALB, RDS, ECR, application, or observability resources.
 
@@ -30,12 +31,15 @@ After this module creates the bucket, the environment root modules use S3 remote
 
 - The provider URL is `https://token.actions.githubusercontent.com`.
 - The only accepted audience is `sts.amazonaws.com`.
-- The trust policy accepts one repository and one branch.
+- The Terraform trust policy accepts one repository and one branch.
+- Each deployment trust policy accepts only its matching GitHub Environment.
 - New GitHub repositories can use immutable owner and repository IDs in the OIDC subject.
 - The role receives temporary credentials for at most one hour.
 - Its current permission policy can access only the two state paths and delete only `.tflock` objects, never state objects.
 
-This is deliberately the **GitHub Terraform role**, not a general-purpose CI/CD role. It has no ECS deployment, ECR push, application runtime, or administrator permissions. A separate GitHub deployment role will be introduced when application delivery exists, while ECS execution and task roles will remain independent runtime identities.
+The **GitHub Terraform role** is not a general-purpose CI/CD role. It has no ECS deployment, ECR push, application runtime, or administrator permissions.
+
+The deployment identities are also separated by environment. Each can push and read images only in its environment's ECR repository, describe the matching task-definition family, update only the matching ECS service, and pass only that service's execution and task roles to `ecs-tasks.amazonaws.com`. `ecs:RegisterTaskDefinition` requires resource `*` because AWS authorizes the operation before the new revision ARN exists; the exact `iam:PassRole` resources and service update ARN provide the critical boundaries.
 
 ## Prerequisites
 
@@ -78,7 +82,7 @@ terraform output
 
 The equivalent repository shortcuts are `make bootstrap-init`, `make bootstrap-validate`, and `make bootstrap-plan`.
 
-After a successful apply, continue with [`docs/oidc.md`](../../docs/oidc.md) to configure the three non-secret GitHub repository variables and run the OIDC authentication proof.
+After a successful apply, continue with [`docs/oidc.md`](../../docs/oidc.md) to configure the non-secret GitHub repository and Environment variables, run the OIDC authentication proof, and prepare controlled deployments.
 
 Do not commit `terraform.tfvars`, `bootstrap.tfplan`, or `terraform.tfstate`.
 

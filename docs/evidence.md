@@ -110,3 +110,25 @@ is enforcing the checks.
 Capture one failed run and its corrected rerun. The screenshot or link should
 show the check name, commit SHA, failure reason, and final result; never include
 OIDC tokens, temporary AWS credentials, Terraform plan files, or secret values.
+
+## Phase 13: Automated ECS deployment
+
+Record this only after the bootstrap changes and target environment have been applied, the GitHub Environments are configured, and the workflow has completed against AWS.
+
+| Evidence | Value |
+| --- | --- |
+| Deployment workflow URL | Pending first deployment |
+| GitHub Environment | Pending `development` / `production` run |
+| Source commit SHA | Pending first deployment |
+| OIDC deployment role ARN | Pending bootstrap apply |
+| ECR image tag | Must equal the full source commit SHA |
+| ECR image digest | Pending first deployment |
+| Trivy artifact scan | Pending first deployment |
+| New task-definition revision | Pending first deployment |
+| ECS desired / running count | Pending stable deployment |
+| Replaced previous revision | Pending ECS deployment evidence |
+| `/healthz` smoke test | Pending HTTP `200` |
+| `/readyz` smoke test | Pending HTTP `200` and database readiness |
+| Permanent AWS keys stored | No |
+
+Capture the workflow summary, the SHA tag and digest in ECR, the new task-definition image, the ECS service deployment/revision, healthy ALB targets, and successful smoke-test steps. The same SHA must connect source, artifact, and runtime. Never capture registry passwords, OIDC tokens, temporary STS credentials, database secrets, or complete environment dumps.

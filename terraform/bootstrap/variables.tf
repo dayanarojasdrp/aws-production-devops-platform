@@ -55,6 +55,32 @@ variable "github_repository_id" {
   nullable    = true
 }
 
+variable "github_deployment_environments" {
+  description = "GitHub Environment names trusted by the development and production deployment roles."
+  type = object({
+    development = string
+    production  = string
+  })
+  default = {
+    development = "development"
+    production  = "production"
+  }
+
+  validation {
+    condition = (
+      var.github_deployment_environments.development != var.github_deployment_environments.production &&
+      alltrue([
+        for name in [
+          var.github_deployment_environments.development,
+          var.github_deployment_environments.production,
+        ] :
+        can(regex("^[A-Za-z0-9._-]+$", name))
+      ])
+    )
+    error_message = "GitHub deployment environment names must be distinct and contain only letters, numbers, dots, underscores, or hyphens."
+  }
+}
+
 variable "tags" {
   description = "Additional tags applied to bootstrap resources."
   type        = map(string)

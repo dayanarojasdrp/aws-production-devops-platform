@@ -11,21 +11,34 @@ provider "aws" {
 }
 
 data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
 
 locals {
-  github_subject = var.github_owner_id != null && var.github_repository_id != null ? format(
-    "repo:%s@%s/%s@%s:ref:refs/heads/%s",
+  github_repository_subject = var.github_owner_id != null && var.github_repository_id != null ? format(
+    "repo:%s@%s/%s@%s",
     var.github_owner,
     var.github_owner_id,
     var.github_repository,
     var.github_repository_id,
-    var.github_branch,
     ) : format(
-    "repo:%s/%s:ref:refs/heads/%s",
+    "repo:%s/%s",
     var.github_owner,
     var.github_repository,
-    var.github_branch,
   )
+  github_subject = "${local.github_repository_subject}:ref:refs/heads/${var.github_branch}"
+
+  deployment_environments = {
+    dev  = var.github_deployment_environments.development
+    prod = var.github_deployment_environments.production
+  }
+
+  deployment_targets = {
+    for environment, github_environment in local.deployment_environments : environment => {
+      github_environment = github_environment
+      github_subject     = "${local.github_repository_subject}:environment:${github_environment}"
+      name_prefix        = "${var.project_name}-${environment}"
+    }
+  }
 
   state_keys = [
     "dev/terraform.tfstate",
@@ -193,4 +206,128 @@ resource "aws_iam_role_policy" "github_terraform_state_access" {
   name   = "terraform-state-access"
   role   = aws_iam_role.github_terraform.id
   policy = data.aws_iam_policy_document.github_terraform_state_access.json
+}
+
+data "aws_iam_policy_document" "github_deployment_assume_role" {
+  for_each = local.deployment_targets
+
+  statement {
+    sid     = "GitHubEnvironmentAssumeRole"
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = [each.value.github_subject]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_deployment" {
+  for_each = local.deployment_targets
+
+  name                 = "${var.project_name}-github-deploy-${each.key}"
+  description          = "Short-lived ${each.key} deployment access for this repository's GitHub Environment."
+  assume_role_policy   = data.aws_iam_policy_document.github_deployment_assume_role[each.key].json
+  max_session_duration = 3600
+
+  tags = {
+    Environment = each.key
+  }
+}
+
+data "aws_iam_policy_document" "github_deployment" {
+  for_each = local.deployment_targets
+
+  statement {
+    sid       = "GetEcrAuthorizationToken"
+    effect    = "Allow"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "PublishAndReadApplicationImages"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:CompleteLayerUpload",
+      "ecr:DescribeImages",
+      "ecr:DescribeRepositories",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:InitiateLayerUpload",
+      "ecr:PutImage",
+      "ecr:UploadLayerPart",
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${each.value.name_prefix}-api",
+    ]
+  }
+
+  statement {
+    sid     = "ReadApplicationTaskDefinitions"
+    effect  = "Allow"
+    actions = ["ecs:DescribeTaskDefinition"]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:task-definition/${each.value.name_prefix}-api:*",
+    ]
+  }
+
+  # RegisterTaskDefinition creates the revision, so AWS evaluates this action
+  # before a resource ARN exists and requires a wildcard resource.
+  statement {
+    sid       = "RegisterTaskDefinitionRevision"
+    effect    = "Allow"
+    actions   = ["ecs:RegisterTaskDefinition"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "DeployOnlyTheApplicationService"
+    effect = "Allow"
+    actions = [
+      "ecs:DescribeServices",
+      "ecs:UpdateService",
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${each.value.name_prefix}/${each.value.name_prefix}-api",
+    ]
+  }
+
+  statement {
+    sid     = "PassOnlyApplicationTaskRoles"
+    effect  = "Allow"
+    actions = ["iam:PassRole"]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${each.value.name_prefix}-ecs-execution",
+      "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${each.value.name_prefix}-ecs-task",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "github_deployment" {
+  for_each = local.deployment_targets
+
+  name   = "deploy-${each.key}-application"
+  role   = aws_iam_role.github_deployment[each.key].id
+  policy = data.aws_iam_policy_document.github_deployment[each.key].json
 }

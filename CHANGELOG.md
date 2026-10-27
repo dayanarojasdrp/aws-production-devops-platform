@@ -24,7 +24,12 @@ All notable changes to this project will be documented in this file.
 - Application CI with dependency verification, formatting, vet, race-enabled tests, golangci-lint, Docker builds, and Trivy image scanning.
 - Terraform CI with backend-free validation, mocked module tests, TFLint, Trivy IaC scanning, stable branch-protection gates, and a manual OIDC-authenticated speculative plan.
 - Reviewed and expiring Trivy exceptions for intentional platform design trade-offs.
+- Environment-scoped GitHub OIDC deployment roles with least-privilege ECR, ECS, and `iam:PassRole` permissions.
+- Automated development delivery and approval-ready production delivery using immutable Git SHA images, ECS task-definition revisions, service-stability waiting, and post-deployment smoke tests.
+- Idempotent deployment reruns that reuse an existing immutable ECR artifact instead of overwriting its tag.
 
 ### Changed
 
 - Upgraded the application build baseline to Go 1.27.3 and patched PostgreSQL/Go module dependencies after container scanning identified fixed high and critical vulnerabilities.
+- Assigned active ECS task-definition revision ownership to the application CD pipeline while Terraform continues to define the runtime configuration baseline.
+- Added retryable read-only mode to the smoke-test script so deployments validate health without creating production data.

@@ -28,6 +28,20 @@ output "github_oidc_subject" {
   value       = local.github_subject
 }
 
+output "github_deployment_role_arns" {
+  description = "Environment-specific IAM role ARNs assumed by the application deployment workflow."
+  value = {
+    for environment, role in aws_iam_role.github_deployment : environment => role.arn
+  }
+}
+
+output "github_deployment_oidc_subjects" {
+  description = "Exact GitHub Environment OIDC subjects accepted by the deployment roles."
+  value = {
+    for environment, target in local.deployment_targets : environment => target.github_subject
+  }
+}
+
 output "aws_region" {
   description = "AWS region configured for bootstrap and backend resources."
   value       = var.aws_region
