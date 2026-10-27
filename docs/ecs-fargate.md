@@ -172,7 +172,23 @@ terraform -chdir=terraform/environments/dev plan \
 terraform -chdir=terraform/environments/dev apply dev.tfplan
 ```
 
-Always inspect a targeted plan. After the first image exists, normal changes use complete plans rather than repeated `-target` operations. GitHub Actions will automate the build/push/deploy order in a later phase.
+Always inspect a targeted plan. After the first image exists, normal changes use complete plans rather than repeated `-target` operations. The application deployment workflow now automates the normal build, scan, push, revision, service update, stability wait, and smoke-test sequence.
+
+## Terraform and CD ownership
+
+Terraform owns the task-definition configuration baseline: CPU, memory, networking mode, ports, environment values, secret references, logging, and IAM roles. CD owns the ECS service's active task-definition revision and changes only the `api` image in the latest baseline.
+
+The service therefore ignores Terraform drift for `task_definition` only. Without that boundary, a later infrastructure apply could accidentally replace the running CD revision with the older SHA stored in Terraform input. When Terraform creates a new baseline because runtime configuration changed, trigger the deployment workflow so it copies that latest configuration into a deployed image revision.
+
+For the actual running revision, query ECS rather than relying on `ecs_task_definition_arn`, which represents Terraform's baseline:
+
+```sh
+aws ecs describe-services \
+  --cluster "$CLUSTER" \
+  --services "$SERVICE" \
+  --query 'services[0].taskDefinition' \
+  --output text
+```
 
 ## Runtime validation
 

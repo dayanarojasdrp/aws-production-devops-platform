@@ -1,0 +1,332 @@
+name: Deploy application
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "scripts/smoke-test.sh"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment and AWS platform target
+        required: true
+        default: development
+        type: choice
+        options:
+          - development
+          - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: application-deploy-${{ github.event_name == 'push' && 'development' || inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Validate deployment request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      environment: ${{ steps.target.outputs.environment }}
+
+    steps:
+      - name: Require an exact main-branch commit
+        id: target
+        shell: bash
+        env:
+          DEPLOY_ENVIRONMENT: ${{ github.event_name == 'push' && 'development' || inputs.environment }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "::error::Deployments may run only from the main branch."
+            exit 1
+          fi
+
+          if [[ ! "${GITHUB_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::The deployment commit must be a full lowercase Git SHA."
+            exit 1
+          fi
+
+          case "${DEPLOY_ENVIRONMENT}" in
+            development | production) ;;
+            *)
+              echo "::error::Unsupported deployment environment ${DEPLOY_ENVIRONMENT}."
+              exit 1
+              ;;
+          esac
+
+          echo "environment=${DEPLOY_ENVIRONMENT}" >>"${GITHUB_OUTPUT}"
+
+  deploy:
+    name: Deploy ${{ needs.preflight.outputs.environment }}
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment:
+      name: ${{ needs.preflight.outputs.environment }}
+      url: ${{ vars.APPLICATION_URL }}
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout exact deployment commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: app/go.mod
+          cache: true
+          cache-dependency-path: app/go.sum
+
+      - name: Retest the exact main commit
+        working-directory: app
+        run: |
+          go mod verify
+          go test ./...
+
+      - name: Validate environment configuration
+        shell: bash
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          ECR_REPOSITORY_NAME: ${{ vars.ECR_REPOSITORY_NAME }}
+          ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+          ECS_TASK_DEFINITION_FAMILY: ${{ vars.ECS_TASK_DEFINITION_FAMILY }}
+          APPLICATION_URL: ${{ vars.APPLICATION_URL }}
+        run: |
+          set -euo pipefail
+          missing=0
+
+          for variable in \
+            AWS_ACCOUNT_ID \
+            AWS_REGION \
+            AWS_DEPLOY_ROLE_ARN \
+            ECR_REPOSITORY_NAME \
+            ECS_CLUSTER_NAME \
+            ECS_SERVICE_NAME \
+            ECS_TASK_DEFINITION_FAMILY \
+            APPLICATION_URL; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "::error::GitHub Environment variable ${variable} is not configured."
+              missing=1
+            fi
+          done
+
+          if [[ -n "${AWS_ACCOUNT_ID:-}" && ! "${AWS_ACCOUNT_ID}" =~ ^[0-9]{12}$ ]]; then
+            echo "::error::AWS_ACCOUNT_ID must contain exactly 12 digits."
+            missing=1
+          fi
+
+          if [[ -n "${APPLICATION_URL:-}" && ! "${APPLICATION_URL}" =~ ^https?://[^/]+/?$ ]]; then
+            echo "::error::APPLICATION_URL must be an HTTP(S) origin without a path."
+            missing=1
+          fi
+
+          exit "${missing}"
+
+      - name: Configure temporary AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: deploy-${{ github.run_id }}
+          role-duration-seconds: 3600
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          unset-current-credentials: true
+
+      - name: Log in to the private ECR registry
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+        with:
+          mask-password: true
+
+      - name: Build or retrieve the immutable artifact
+        id: artifact
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          ECR_REPOSITORY_NAME: ${{ vars.ECR_REPOSITORY_NAME }}
+        run: |
+          set -euo pipefail
+          image_uri="${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}:${GITHUB_SHA}"
+          expected_repository_uri="${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}"
+          repository_uri="$(aws ecr describe-repositories \
+            --repository-names "${ECR_REPOSITORY_NAME}" \
+            --query 'repositories[0].repositoryUri' \
+            --output text)"
+
+          if [[ "${repository_uri}" != "${expected_repository_uri}" ]]; then
+            echo "::error::ECR resolved ${repository_uri}, expected ${expected_repository_uri}."
+            exit 1
+          fi
+
+          if aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY_NAME}" \
+            --image-ids imageTag="${GITHUB_SHA}" >/dev/null 2>&1; then
+            echo "Reusing the existing immutable artifact ${image_uri}."
+            docker pull "${image_uri}"
+            published="true"
+          else
+            docker build \
+              --platform linux/amd64 \
+              --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+              --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+              --tag "${image_uri}" \
+              app
+            published="false"
+          fi
+
+          echo "image=${image_uri}" >>"${GITHUB_OUTPUT}"
+          echo "published=${published}" >>"${GITHUB_OUTPUT}"
+
+      - name: Scan the exact deployment artifact
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.0
+          image-ref: ${{ steps.artifact.outputs.image }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+      - name: Publish new artifact to ECR
+        if: steps.artifact.outputs.published == 'false'
+        env:
+          IMAGE_URI: ${{ steps.artifact.outputs.image }}
+        run: docker push "${IMAGE_URI}"
+
+      - name: Resolve the published image digest
+        id: digest
+        shell: bash
+        env:
+          ECR_REPOSITORY_NAME: ${{ vars.ECR_REPOSITORY_NAME }}
+        run: |
+          set -euo pipefail
+          digest=""
+
+          for attempt in 1 2 3 4 5 6; do
+            digest="$(aws ecr describe-images \
+              --repository-name "${ECR_REPOSITORY_NAME}" \
+              --image-ids imageTag="${GITHUB_SHA}" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text 2>/dev/null || true)"
+            if [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              break
+            fi
+            echo "Waiting for ECR image metadata (${attempt}/6)."
+            sleep 5
+          done
+
+          if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::ECR did not return a valid image digest for ${GITHUB_SHA}."
+            exit 1
+          fi
+
+          echo "digest=${digest}" >>"${GITHUB_OUTPUT}"
+
+      - name: Download the latest task definition family baseline
+        env:
+          ECS_TASK_DEFINITION_FAMILY: ${{ vars.ECS_TASK_DEFINITION_FAMILY }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "${ECS_TASK_DEFINITION_FAMILY}" \
+            --query taskDefinition \
+            --output json >task-definition.json
+
+      - name: Render the new image into the task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@138c24f321fdbdf7edee4a685519d253cae2cdea # v1.9.0
+        with:
+          task-definition: task-definition.json
+          container-name: api
+          image: ${{ steps.artifact.outputs.image }}
+
+      - name: Register the revision and deploy the ECS service
+        id: ecs
+        uses: aws-actions/amazon-ecs-deploy-task-definition@a00d4d57ac0de1a99b39fe469f3d898d38717c2b # v2.6.4
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          cluster: ${{ vars.ECS_CLUSTER_NAME }}
+          service: ${{ vars.ECS_SERVICE_NAME }}
+          wait-for-service-stability: true
+          wait-for-minutes: 20
+          wait-max-delay-seconds: 15
+
+      - name: Verify the stable service revision
+        id: service
+        shell: bash
+        env:
+          ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+          EXPECTED_TASK_DEFINITION: ${{ steps.ecs.outputs.task-definition-arn }}
+        run: |
+          set -euo pipefail
+          service="$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER_NAME}" \
+            --services "${ECS_SERVICE_NAME}" \
+            --query 'services[0]' \
+            --output json)"
+
+          task_definition="$(jq -r '.taskDefinition' <<<"${service}")"
+          desired="$(jq -r '.desiredCount' <<<"${service}")"
+          running="$(jq -r '.runningCount' <<<"${service}")"
+          pending="$(jq -r '.pendingCount' <<<"${service}")"
+
+          if [[ "${task_definition}" != "${EXPECTED_TASK_DEFINITION}" ]]; then
+            echo "::error::ECS is using ${task_definition}, expected ${EXPECTED_TASK_DEFINITION}."
+            exit 1
+          fi
+          if [[ "${running}" != "${desired}" || "${pending}" != "0" ]]; then
+            echo "::error::ECS is not stable: desired=${desired}, running=${running}, pending=${pending}."
+            exit 1
+          fi
+
+          echo "task_definition=${task_definition}" >>"${GITHUB_OUTPUT}"
+          echo "desired=${desired}" >>"${GITHUB_OUTPUT}"
+          echo "running=${running}" >>"${GITHUB_OUTPUT}"
+
+      - name: Run post-deployment smoke tests
+        env:
+          BASE_URL: ${{ vars.APPLICATION_URL }}
+          SMOKE_TEST_MODE: read-only
+          SMOKE_TEST_ATTEMPTS: "6"
+          SMOKE_TEST_DELAY_SECONDS: "10"
+        run: ./scripts/smoke-test.sh
+
+      - name: Write deployment summary
+        if: success()
+        env:
+          DEPLOY_ENVIRONMENT: ${{ needs.preflight.outputs.environment }}
+          IMAGE_URI: ${{ steps.artifact.outputs.image }}
+          IMAGE_DIGEST: ${{ steps.digest.outputs.digest }}
+          TASK_DEFINITION: ${{ steps.service.outputs.task_definition }}
+          DESIRED_COUNT: ${{ steps.service.outputs.desired }}
+          RUNNING_COUNT: ${{ steps.service.outputs.running }}
+          APPLICATION_URL: ${{ vars.APPLICATION_URL }}
+        run: |
+          {
+            echo "## ECS deployment succeeded"
+            echo
+            echo "- Environment: \`${DEPLOY_ENVIRONMENT}\`"
+            echo "- Source commit: \`${GITHUB_SHA}\`"
+            echo "- Image: \`${IMAGE_URI}\`"
+            echo "- Digest: \`${IMAGE_DIGEST}\`"
+            echo "- Task definition: \`${TASK_DEFINITION}\`"
+            echo "- Desired / running tasks: \`${DESIRED_COUNT} / ${RUNNING_COUNT}\`"
+            echo "- Smoke test: \`${APPLICATION_URL}/healthz\` and \`/readyz\` passed"
+            echo "- Authentication: GitHub OIDC → AWS STS"
+          } >>"${GITHUB_STEP_SUMMARY}"
