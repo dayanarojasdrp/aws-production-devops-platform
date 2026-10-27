@@ -223,6 +223,65 @@ merging:
 The useful evidence is the transition from failed check, through diagnosis and
 fix, to a green gate—not merely a screenshot of a green tick.
 
+## Phase 18 — DevSecOps security in CI
+
+This phase extends the quality gate from "tests pass" to "the change is secure enough to ship." The goal is not to add dozens of scanners, but to keep the signal sharp and actionable.
+
+### Security stack to keep
+
+A practical minimal set is:
+
+- Trivy for container and filesystem vulnerability scanning;
+- TFLint for Terraform linting and AWS rules;
+- Checkov for IaC policy scanning.
+
+This is enough to cover the most useful security checkpoints without creating noisy, slow, and hard-to-trust pipelines.
+
+### Example PR gate
+
+```text
+Pull request
+    |
+    +-- Go test
+    +-- go vet / lint
+    +-- terraform validate
+    +-- TFLint
+    +-- Checkov
+    +-- Trivy
+    |
+    +-- if any gate fails -> PR blocked
+```
+
+The logic is intentionally simple: security findings are integrated as standard gatekeepers, not as a separate afterthought.
+
+### Why this matters
+
+Developer velocity improves when the team sees clear feedback early. A scanner that fails the PR is much better than discovering the issue only after merging to `main` or after the environment is already running a vulnerable image.
+
+### Security workflows by concern
+
+| Concern | Tool | Why it matters |
+| --- | --- | --- |
+| Container image vulnerabilities | Trivy | Detects OS/library CVEs before deployment |
+| Terraform misconfiguration and bad patterns | Checkov | Finds IaC policy violations before apply |
+| Terraform style and AWS-specific issues | TFLint | Catches invalid config patterns and risky infrastructure design |
+| Application dependency and source issues | Go test + vet + lint | Ensures code quality before packaging |
+
+### Operational policy
+
+When a serious issue is found:
+
+- the PR fails;
+- deployment is prevented;
+- the developer sees the exact finding and path;
+- the code is fixed before merge.
+
+This is DevSecOps in its practical form: security is part of the standard engineering workflow, not a manual review step after the fact.
+
+### Interview narrative
+
+This phase shows you understand that security must be embedded in CI and not bolted on after deployment. It demonstrates the maturity of a team that wants fast feedback, lower risk, and protection against moving vulnerable artifacts into production.
+
 ## Application deployment workflow
 
 `.github/workflows/deploy.yml` begins only after code is on `main`. Application
