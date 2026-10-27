@@ -158,3 +158,108 @@ This is the kind of incident that demonstrates production thinking instead of ju
 6. application availability preserved during the recovery window.
 
 That narrative shows you understand the difference between a deployment that exits with a failure and a deployment that keeps the system healthy under pressure.
+
+## Incident 03 — ECS auto scaling reacted to sustained CPU load
+
+### Failure introduced
+
+The service was intentionally subjected to a higher request rate than its baseline. The workload started with a stable two-task footprint and then increased to a point where average CPU utilization crossed the scaling threshold.
+
+The intended sequence was:
+
+```text
+baseline: 2 tasks
+        |
+        v
+normal traffic
+        |
+        v
+increase load and queue depth
+        |
+        v
+CPU utilization > 60%
+        |
+        v
+ECS Application Auto Scaling adds tasks
+        |
+        v
+steady state restored at a higher replica count
+        |
+        v
+traffic decreases and scale-in removes surplus tasks
+```
+
+### Symptoms observed
+
+During the load increase, the following behavior was visible in the AWS console and CLI:
+
+- `aws ecs describe-services` showed the desired task count increasing from 2 to a higher value;
+- `aws cloudwatch get-metric-statistics` showed CPU utilization trending above the target threshold;
+- the ALB target group reported more healthy targets as new tasks came online;
+- the application remained available while the service expanded to handle the new level of traffic.
+
+### CloudWatch and ECS evidence
+
+The relevant evidence was the combination of the CPU utilization metric and the service's desired count timeline.
+
+Example metric evidence:
+
+```text
+CPUUtilization: 58% -> 72% -> 84% -> 65%
+DesiredCount: 2 -> 3 -> 4 -> 2
+```
+
+The target tracking policy used CPU as the scaling signal, with a target value of 60%. Once average CPU stayed above the threshold, ECS increased the desired task count according to the configured scaling policy. When the workload lowered, the service scale-in logic returned it to the minimum capacity.
+
+### Root cause
+
+The service had no horizontal scaling policy before this phase, so the application remained pinned to a fixed task count and could not absorb increasing traffic efficiently. The scaling policy addressed the real bottleneck: CPU saturation in the application runtime.
+
+### Auto scaling configuration
+
+The service was configured with a target tracking policy using the ECS service average CPU metric:
+
+```hcl
+resource "aws_appautoscaling_target" "service" {
+  max_capacity       = 6
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.this.name}/${aws_ecs_service.application.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "cpu_target_tracking" {
+  policy_type = "TargetTrackingScaling"
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = 60
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+  }
+}
+```
+
+This keeps the workload between a stable lower bound and a bounded upper bound while reacting to demand in near real time.
+
+### Validation
+
+After the load test:
+
+- the service scaled from minimum capacity to additional tasks while CPU remained elevated;
+- the application remained healthy during the burst; 
+- once traffic decreased, the desired count returned to the minimum 
+- the final state matched the original two-task baseline without manual intervention.
+
+### Why this matters for interviews
+
+Auto scaling is a strong portfolio signal because it demonstrates operational maturity beyond static infrastructure. It shows you understand:
+
+- workload-driven resource tuning;
+- cost-aware scaling boundaries;
+- target tracking metrics rather than manual capacity guessing;
+- continuous service availability during traffic variation.
+
+This is the difference between a service that works only at one load level and a service that behaves predictably under changing demand.

@@ -139,6 +139,17 @@ run "development_service" {
 
   assert {
     condition = (
+      aws_appautoscaling_target.service.min_capacity == 2 &&
+      aws_appautoscaling_target.service.max_capacity == 6 &&
+      aws_appautoscaling_policy.cpu_target_tracking.policy_type == "TargetTrackingScaling" &&
+      aws_appautoscaling_policy.cpu_target_tracking.target_tracking_scaling_policy_configuration[0].target_value == 60 &&
+      aws_appautoscaling_policy.cpu_target_tracking.target_tracking_scaling_policy_configuration[0].predefined_metric_specification[0].predefined_metric_type == "ECSServiceAverageCPUUtilization"
+    )
+    error_message = "The ECS service must enable CPU-based target tracking auto scaling with a 2-6 replica range."
+  }
+
+  assert {
+    condition = (
       one(aws_ecs_service.application.network_configuration).assign_public_ip == false &&
       one(aws_ecs_service.application.network_configuration).subnets == toset(var.private_subnet_ids) &&
       one(aws_ecs_service.application.network_configuration).security_groups == toset([var.ecs_security_group_id])
